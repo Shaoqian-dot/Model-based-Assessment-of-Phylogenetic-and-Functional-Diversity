@@ -1,4 +1,4 @@
- 
+rm(list = ls())
 ############################################################
 ## Simulation study
 ## Compare powers of:
@@ -25,8 +25,8 @@ source("R/spectral_decomp.R")
 
 set.seed(123)
 
-m_vec  <- c(2, 4, 8, 16, 32)
-r      <- 160
+m_vec  <- c(2, 4, 8, 16)
+r      <- 80
 nsim   <- 100
 sigma2 <- 1
 c_val  <- 0.6
@@ -215,25 +215,15 @@ fit_models <- function(dat, m){
   )
   
   ##########################################################
-  ## Mlm()
+  ## mlm object
   ##########################################################
   
   Ymat <- as.matrix(dat_wide[, -1])
   
   fit_mlm <- try(
     
-    Mlm(
+    lm(
       Ymat ~ com,
-      data = dat_wide
-    ),
-    
-    silent = TRUE
-  )
-  
-  fit_mlm_null <- try(
-    
-    Mlm(
-      Ymat ~ 1,
       data = dat_wide
     ),
     
@@ -297,12 +287,12 @@ fit_models <- function(dat, m){
   if(!inherits(fit_mlm, "try-error")){
     
     tmp <- try(
-      anova(fit_mlm),
+      summary(manova(fit_mlm)),
       silent = TRUE
     )
     
     if(!inherits(tmp, "try-error")){
-      p_mlm <- tmp$`Pr(>F)`[1]
+      p_mlm <- tmp$stats['com', 'Pr(>F)']
     }
   }
   
@@ -399,6 +389,11 @@ res_vm <- run_simulation("vm")
 res_all <- bind_rows(
   res_v1,
   res_vm
+)
+
+saveRDS(
+  res_all,
+  file = file.path("results", "res_all.rds")
 )
 
 ############################################################
