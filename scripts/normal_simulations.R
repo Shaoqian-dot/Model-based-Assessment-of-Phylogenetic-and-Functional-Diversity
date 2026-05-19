@@ -178,7 +178,7 @@ fit_models <- function(dat, m){
   fit_glmm_no_rr_null <- try(
     
     glmmTMB(
-      y ~ sp,
+      y ~ sp + com,
       data = dat_long,
       family = gaussian()
     ),
@@ -205,7 +205,7 @@ fit_models <- function(dat, m){
   fit_glmm_rr_null <- try(
     
     glmmTMB(
-      y ~ sp +
+      y ~ sp + com +
         rr(sp + 0 | id, d = 2),
       data = dat_long,
       family = gaussian()
@@ -218,32 +218,32 @@ fit_models <- function(dat, m){
   ## mlm object
   ##########################################################
   
-  Ymat <- as.matrix(dat_wide[, -1])
-  
-  fit_mlm <- try(
-    
-    lm(
-      Ymat ~ com,
-      data = dat_wide
-    ),
-    
-    silent = TRUE
-  )
+  # Ymat <- as.matrix(dat_wide[, -1])
+  # 
+  # fit_mlm <- try(
+  #   
+  #   lm(
+  #     Ymat ~ com,
+  #     data = dat_wide
+  #   ),
+  #   
+  #   silent = TRUE
+  # )
   
   ##########################################################
   ## lm()
   ##########################################################
   
-  pvals_lm <- rep(NA, m)
-  
-  for(j in 1:m){
-    
-    tmp_fit <- lm(
-      dat_wide[[j + 1]] ~ dat_wide$com
-    )
-    
-    pvals_lm[j] <- anova(tmp_fit)[1, "Pr(>F)"]
-  }
+  # pvals_lm <- rep(NA, m)
+  # 
+  # for(j in 1:m){
+  #   
+  #   tmp_fit <- lm(
+  #     dat_wide[[j + 1]] ~ dat_wide$com
+  #   )
+  #   
+  #   pvals_lm[j] <- anova(tmp_fit)[1, "Pr(>F)"]
+  # }
   
   ##########################################################
   ## Likelihood ratio tests
@@ -282,19 +282,19 @@ fit_models <- function(dat, m){
   ## Mlm p-value
   ##########################################################
   
-  p_mlm <- NA
-  
-  if(!inherits(fit_mlm, "try-error")){
-    
-    tmp <- try(
-      summary(manova(fit_mlm)),
-      silent = TRUE
-    )
-    
-    if(!inherits(tmp, "try-error")){
-      p_mlm <- tmp$stats['com', 'Pr(>F)']
-    }
-  }
+  # p_mlm <- NA
+  # 
+  # if(!inherits(fit_mlm, "try-error")){
+  #   
+  #   tmp <- try(
+  #     summary(manova(fit_mlm)),
+  #     silent = TRUE
+  #   )
+  #   
+  #   if(!inherits(tmp, "try-error")){
+  #     p_mlm <- tmp$stats['com', 'Pr(>F)']
+  #   }
+  # }
   
   ##########################################################
   ## Combine lm p-values
@@ -302,11 +302,11 @@ fit_models <- function(dat, m){
   
   ## Fisher method
   
-  p_lm <- pchisq(
-    -2 * sum(log(pvals_lm)),
-    df = 2 * m,
-    lower.tail = FALSE
-  )
+  # p_lm <- pchisq(
+  #   -2 * sum(log(pvals_lm)),
+  #   df = 2 * m,
+  #   lower.tail = FALSE
+  # )
   
   ##########################################################
   ## Return
@@ -314,9 +314,7 @@ fit_models <- function(dat, m){
   
   return(data.frame(
     glmm_no_rr = p_glmm_no_rr,
-    glmm_rr    = p_glmm_rr,
-    mlm         = p_mlm,
-    lm          = p_lm
+    glmm_rr    = p_glmm_rr
   ))
 }
 
