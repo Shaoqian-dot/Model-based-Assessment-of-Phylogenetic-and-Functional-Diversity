@@ -1,8 +1,54 @@
-##################################################
-## Main simulation runner
-##################################################
+rm(list = ls())
+############################################################
+## Simulation study
+## Compare powers of:
+## 1. glmmTMB without rr
+## 2. glmmTMB with rr
+############################################################
 
-families <- c("gaussian", "poisson")
+library(MASS)
+library(glmmTMB)
+library(vegan)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ape)
+source("R/getPhyloMatrix.R")
+source("R/spectral_decomp.R")
+source("R/run_simulation_global.R")
+source("R/simulation_core_global.R")
+############################################################
+### Settings
+############################################################
+
+set.seed(123)
+
+p_vec  <- c(2, 4, 8, 16)
+r      <- 80
+nsim   <- 100
+sigma2 <- 1
+c_val  <- 0.6
+
+############################################################
+### Load phylogenetic tree
+############################################################
+
+data_dir <- "data"
+
+tree_file <- file.path(data_dir, "example.tre")
+
+if(!file.exists(tree_file)){
+  stop("Tree file not found: ", tree_file)
+}
+
+tree <- ape::read.tree(tree_file)
+
+###########################################################
+## Main simulation runner
+###########################################################
+
+families <- c("poisson")
 signals <- c("v1", "vp")
 
 res_all <- expand.grid(family = families,
