@@ -2,4 +2,15 @@
 .Rhistory
 .RData
 .Ruserdata
-data/
+
+# Generated results
+results/*.rds
+results/*.RData
+
+# Generated figures
+figures/*.png
+figures/*.pdf
+
+# Large raw data
+data/*.rds
+data/*.csv
