@@ -65,5 +65,30 @@ res_all <- expand.grid(family = families,
 
 saveRDS(
   res_all,
-  file = file.path("results", "res_all_Poisson.rds")
+  file = file.path("results", "res_all_Poisson_nonGlobal.rds")
 )
+
+############################################################
+### Power plot
+############################################################
+
+ggplot(
+  res_all,
+  aes(x = p,
+      y = power,
+      color = model)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ signal) +
+  scale_x_continuous(
+    breaks = p_vec
+  ) +
+  ylim(0, 1) +
+  theme_bw() +
+  labs(
+    x = "Number of species (p)",
+    y = "Power",
+    color = "Model"
+  )
+
