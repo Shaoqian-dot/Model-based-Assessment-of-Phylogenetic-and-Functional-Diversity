@@ -1,4 +1,4 @@
-run_simulation <- function(signal_type, family_type){
+run_simulation <- function(signal_type, family_type, globalTest){
   
   res_all <- list()
   
@@ -21,7 +21,7 @@ run_simulation <- function(signal_type, family_type){
           sigma2 = sigma2
         )
         
-        fit_models(dat, family = family_type)
+        fit_models(dat, family = family_type, globalTest)
       }
     )
     

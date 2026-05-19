@@ -18,6 +18,8 @@ source("R/getPhyloMatrix.R")
 source("R/spectral_decomp.R")
 source("R/run_simulation_global.R")
 source("R/simulation_core_global.R")
+source("R/get_num.eig.R")
+source("R/fit_model_current2.R")
 ############################################################
 ### Settings
 ############################################################
@@ -26,7 +28,7 @@ set.seed(123)
 
 p_vec  <- c(2, 4, 8, 16)
 r      <- 80
-nsim   <- 100
+nsim   <- 20
 sigma2 <- 1
 c_val  <- 0.6
 
@@ -56,5 +58,12 @@ res_all <- expand.grid(family = families,
                        stringsAsFactors = FALSE) |>
   pmap_dfr(function(family, signal){
     
-    run_simulation(signal, family)
+    run_simulation(signal = signal,
+                   family = family, 
+                   globalTest = FALSE)
   })
+
+saveRDS(
+  res_all,
+  file = file.path("results", "res_all_Poisson.rds")
+)

@@ -71,7 +71,7 @@ generate_data <- function(p,
   list(long = dat_long, wide = dat_wide)
 }
 
-fit_models <- function(dat, family = c("gaussian", "poisson")){
+fit_models <- function(dat, family = c("gaussian", "poisson"), globalTest){
   
   family <- match.arg(family)
   
@@ -83,43 +83,82 @@ fit_models <- function(dat, family = c("gaussian", "poisson")){
     poisson()
   }
   
-  fit_glmm_no_rr <- try(
-    glmmTMB(
-      y ~ com * sp,
-      data = dat_long,
-      family = fam
-    ),
-    silent = TRUE
-  )
-  
-  fit_glmm_no_rr_null <- try(
-    glmmTMB(
-      y ~ sp + com,
-      data = dat_long,
-      family = fam
-    ),
-    silent = TRUE
-  )
-  
-  fit_glmm_rr <- try(
-    glmmTMB(
-      y ~ com * sp +
-        rr(sp + 0 | id, d = 2),
-      data = dat_long,
-      family = fam
-    ),
-    silent = TRUE
-  )
-  
-  fit_glmm_rr_null <- try(
-    glmmTMB(
-      y ~ sp + com +
-        rr(sp + 0 | id, d = 2),
-      data = dat_long,
-      family = fam
-    ),
-    silent = TRUE
-  )
+  if (globalTest == TRUE){
+    fit_glmm_no_rr <- try(
+      glmmTMB(
+        y ~ com * sp,
+        data = dat_long,
+        family = fam
+      ),
+      silent = TRUE
+    )
+    
+    fit_glmm_no_rr_null <- try(
+      glmmTMB(
+        y ~ sp + com,
+        data = dat_long,
+        family = fam
+      ),
+      silent = TRUE
+    )
+    
+    fit_glmm_rr <- try(
+      glmmTMB(
+        y ~ com * sp +
+          rr(sp + 0 | id, d = 2),
+        data = dat_long,
+        family = fam
+      ),
+      silent = TRUE
+    )
+    
+    fit_glmm_rr_null <- try(
+      glmmTMB(
+        y ~ sp + com +
+          rr(sp + 0 | id, d = 2),
+        data = dat_long,
+        family = fam
+      ),
+      silent = TRUE
+    )
+  } else {
+    p <- nlevels(dat$long$sp)
+    Phy_DM <- getPhyloMatrix(tree, p)
+    Phy_SM <- max(Phy_DM) - Phy_DM
+    I_p <- diag(p) 
+    J <- I_p - 1/p * matrix(1, p, p)   # centering matrix
+    S_J <- t(J) %*% Phy_SM %*% J  # centered similarity matrix
+    V_J <- spectral_decomp(VC_phy_func = S_J)$P  # eigenvectors of transformed matrix
+    D <- spectral_decomp(VC_phy_func = S_J)$D
+    val_num.eig <- get_num.eig(Methods = 'Method3', Methods_para = NA, D = D)
+    fit_glmm_no_rr <<- try(
+      fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE,
+                                 yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
+                                 Distribution = fam, null = FALSE),
+      silent = TRUE
+    )
+    
+    fit_glmm_no_rr_null <- try(
+      fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE,
+                yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
+                Distribution = fam, null = TRUE, com_left = NULL),
+      silent = TRUE
+    )
+    
+    fit_glmm_rr <- try(
+      fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
+                yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
+                Distribution = fam, null = FALSE),
+      silent = TRUE
+    )
+    
+    fit_glmm_rr_null <- try(
+      fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
+                yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
+                Distribution = fam, null = TRUE, com_left = NULL),
+      silent = TRUE
+    )
+  }
   
   get_lrt_p <- function(fit1, fit0){
     
