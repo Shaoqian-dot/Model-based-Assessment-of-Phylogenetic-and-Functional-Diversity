@@ -400,7 +400,7 @@ saveRDS(
 
 ggplot(
   res_all,
-  aes(x = m,
+  aes(x = p,
       y = power,
       color = model)
 ) +
