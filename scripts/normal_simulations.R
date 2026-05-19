@@ -51,7 +51,7 @@ tree <- ape::read.tree(tree_file)
 
 generate_data <- function(m,
                           r,
-                          signal = c("v1", "vm"),
+                          signal = c("v1", "vp"),
                           c_val = 0.6,
                           sigma2 = 1){
   
@@ -91,7 +91,7 @@ generate_data <- function(m,
     mu2 <- c_val * vec1
   }
   
-  if(signal == "vm"){
+  if(signal == "vp"){
     mu2 <- c_val * vecm
   }
   
@@ -384,11 +384,11 @@ run_simulation <- function(signal_type){
 
 res_v1 <- run_simulation("v1")
 
-res_vm <- run_simulation("vm")
+res_vp <- run_simulation("vp")
 
 res_all <- bind_rows(
   res_v1,
-  res_vm
+  res_vp
 )
 
 saveRDS(
@@ -415,7 +415,7 @@ ggplot(
   ylim(0, 1) +
   theme_bw() +
   labs(
-    x = "Number of species (m)",
+    x = "Number of species (p)",
     y = "Power",
     color = "Model"
   )
