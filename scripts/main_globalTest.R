@@ -28,7 +28,7 @@ set.seed(123)
 
 p_vec  <- c(2, 4, 8, 16)
 r      <- 80
-nsim   <- 20
+nsim   <- 100
 sigma2 <- 1
 c_val  <- 0.6
 
