@@ -79,8 +79,8 @@ fit_models <- function(dat, family = c("gaussian", "poisson"), globalTest){
   
   fam <- if(family == "gaussian"){
     gaussian()
-  } else {
-    poisson()
+  } else if (family == "poisson") {
+    nbinom2
   }
   
   if (globalTest == TRUE){
@@ -131,7 +131,7 @@ fit_models <- function(dat, family = c("gaussian", "poisson"), globalTest){
     V_J <- spectral_decomp(VC_phy_func = S_J)$P  # eigenvectors of transformed matrix
     D <- spectral_decomp(VC_phy_func = S_J)$D
     val_num.eig <- get_num.eig(Methods = 'Method3', Methods_para = NA, D = D)
-    fit_glmm_no_rr <<- try(
+    fit_glmm_no_rr <- try(
       fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE,
                                  yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
                                  Distribution = fam, null = FALSE),
