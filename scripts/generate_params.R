@@ -25,4 +25,6 @@ params$row_id <- NULL
 
 write.csv(params,
           here("config", "params.csv"),
-          row.names = FALSE)
+          sep = ",",
+          row.names = FALSE,
+          quote = FALSE)
