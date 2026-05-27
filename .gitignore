@@ -2,10 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
-
-# Generated results
 output/
 results/
+logs/
+# Generated results
+
 results/*.rds
 results/*.RData
 
