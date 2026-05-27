@@ -7,6 +7,7 @@ rm(list = ls())
 library(dplyr)
 library(purrr)
 library(here)
+library(ggplot2)
 
 cat("Aggregating simulation outputs...\n")
 
@@ -48,6 +49,35 @@ res_summary <- res_all %>%
     power = mean(power, na.rm = TRUE),
     n_jobs = n(),
     .groups = "drop"
+  )
+
+############################################################
+### Power plot
+############################################################
+res_summary_filter <- res_summary %>%
+  filter(
+    family == "gaussian",
+    c_val == 0.6
+  )
+p_vec <- unique(res_summary_filter$p)
+ggplot(
+  res_summary_filter,
+  aes(x = p,
+      y = power,
+      color = model)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ signal) +
+  scale_x_continuous(
+    breaks = p_vec
+  ) +
+  ylim(0, 1) +
+  theme_bw() +
+  labs(
+    x = "Number of species (p)",
+    y = "Power",
+    color = "Model"
   )
 
 ############################################################
