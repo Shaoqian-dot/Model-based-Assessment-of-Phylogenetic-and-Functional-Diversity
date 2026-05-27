@@ -26,11 +26,11 @@ source("R/fit_model_current2.R")
 
 set.seed(123)
 
-p_vec  <- c(2, 4, 8, 16)
-r      <- 80
-nsim   <- 100
-sigma2 <- 1
-c_val  <- 0.6
+# p_vec  <- c(2, 4, 8, 16)
+# r      <- 80
+# nsim   <- 100
+# sigma2 <- 1
+# c_val  <- 0.6
 
 ############################################################
 ### Load phylogenetic tree
@@ -50,22 +50,59 @@ tree <- ape::read.tree(tree_file)
 ## Main simulation runner
 ###########################################################
 
-families <- c("poisson")
+families <- c("gaussian")
 signals <- c("v1", "vp")
+globalTest <- TRUE
 
-res_all <- expand.grid(family = families,
-                       signal = signals,
-                       stringsAsFactors = FALSE) |>
-  pmap_dfr(function(family, signal){
+mat_p_sim <- cbind(rep(c(2, 4, 8, 16), c(2, 1)),
+                   rep(c(10, 20), c(2, 1)))
+colnames(mat_p_sim) <- c('p', 'nsim')
+
+grid <- expand.grid(
+  family = families,
+  signal = signals,
+  row_id = seq_len(nrow(mat_p_sim)),
+  r = 80,
+  c_val = 0.6,
+  sigma2 = 1,
+  globalTest = TRUE,
+  stringsAsFactors = FALSE
+)
+mat_p_sim_expand <- lapply(grid$row_id, function(i) mat_p_sim[i, ])
+mat_p_sim_expand <- do.call(rbind, mat_p_sim_expand)
+grid <- cbind(grid, mat_p_sim_expand)
+
+grid$seed <- 10000 + seq_len(nrow(grid))
+grid$row_id <- NULL
+
+res_all <- grid |>
+  pmap_dfr(function(family, signal, globalTest, p, r, c_val, sigma2,
+                    nsim, seed){
     
-    run_simulation(signal = signal,
-                   family = family, 
-                   globalTest = FALSE)
+    run_simulation(
+      signal_type = signal,
+      family_type = family,
+      globalTest = globalTest,
+      p = p,
+      r = r,
+      c_val = c_val,
+      sigma2 = sigma2,
+      nsim = nsim,
+      seed = seed,
+      tree = tree
+    )
   })
+
+res_mean <- res_all %>%
+  group_by(signal, family, p, c_val, model) %>%
+  summarise(
+    power = mean(power, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 saveRDS(
   res_all,
-  file = file.path("results", "res_all_Poisson_nonGlobal.rds")
+  file = file.path("results", "res_all_Pois_NegBino_Global_c0.6.rds")
 )
 
 ############################################################

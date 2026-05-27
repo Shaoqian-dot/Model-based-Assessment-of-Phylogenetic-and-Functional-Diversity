@@ -2,8 +2,9 @@ generate_data <- function(p,
                           r,
                           signal = c("v1", "vp"),
                           family = c("gaussian", "poisson"),
-                          c_val = 0.6,
-                          sigma2 = 1){
+                          c_val,
+                          sigma2,
+                          tree){
   
   signal <- match.arg(signal)
   family <- match.arg(family)
@@ -71,7 +72,7 @@ generate_data <- function(p,
   list(long = dat_long, wide = dat_wide)
 }
 
-fit_models <- function(dat, family = c("gaussian", "poisson"), globalTest){
+fit_models <- function(dat, family = c("gaussian", "poisson"), globalTest, tree){
   
   family <- match.arg(family)
   

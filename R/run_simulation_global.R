@@ -1,42 +1,48 @@
-run_simulation <- function(signal_type, family_type, globalTest){
+run_simulation <- function(signal_type,
+                           family_type,
+                           globalTest,
+                           p,
+                           r,
+                           c_val,
+                           sigma2,
+                           nsim,
+                           seed,
+                           tree){
+  set.seed(seed)
   
-  res_all <- list()
+  cat("Running:", signal_type,
+      "| family =", family_type,
+      "| p =", p, "\n")
   
-  counter <- 1
+  tmp_res <- map_dfr(
+    1:nsim,
+    function(sim){
+      
+      dat <- generate_data(
+        p = p,
+        r = r,
+        signal = signal_type,
+        family = family_type,
+        c_val = c_val,
+        sigma2 = sigma2,
+        tree = tree
+      )
+      
+      fit_models(dat, family = family_type, globalTest, tree = tree)
+    }
+  )
   
-  for(p in p_vec){
-    
-    cat("Running:", signal_type, "| family =", family_type, "| p =", p, "\n")
-    
-    tmp_res <- map_dfr(
-      1:nsim,
-      function(sim){
-        
-        dat <- generate_data(
-          p = p,
-          r = r,
-          signal = signal_type,
-          family = family_type,
-          c_val = c_val,
-          sigma2 = sigma2
-        )
-        
-        fit_models(dat, family = family_type, globalTest)
-      }
-    )
-    
-    power_res <- colMeans(tmp_res < 0.05, na.rm = TRUE)
-    
-    res_all[[counter]] <- data.frame(
-      signal = signal_type,
-      family = family_type,
-      p = p,
-      model = names(power_res),
-      power = as.numeric(power_res)
-    )
-    
-    counter <- counter + 1
-  }
+  power_res <- colMeans(tmp_res < 0.05, na.rm = TRUE)
   
-  bind_rows(res_all)
+  res <- data.frame(
+    signal = signal_type,
+    family = family_type,
+    p = p,
+    c_val = c_val,
+    model = names(power_res),
+    power = as.numeric(power_res),
+    seed = seed
+  )
+  
+  return(res)
 }
