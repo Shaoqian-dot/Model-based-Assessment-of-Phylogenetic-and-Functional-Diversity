@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#PBS -N my_simulations
+#PBS -l mem=6gb
+#PBS -l walltime=11:59:59
+#PBS -o logs/${PBS_JOBID}.out
+#PBS -e logs/${PBS_JOBID}.err
+#PBS -j oe
+
+cd $PBS_O_WORKDIR
+
+module purge
+module add r/4.5.1
+
+echo "Job started: $PBS_JOBID"
+
+Rscript scripts/main_Test_Katana.R \
+  poisson \
+  v1 \
+  80 \
+  0.6 \
+  1 \
+  FALSE \
+  4 \
+  10 \
+  1001
+
+echo "Job finished"
