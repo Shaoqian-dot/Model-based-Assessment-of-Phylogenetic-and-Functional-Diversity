@@ -1,115 +1,4 @@
 rm(list = ls())
-library(MASS)
-library(glmmTMB)
-library(vegan)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(purrr)
-library(ape)
-library(here)
-
-cat("Working directory:", getwd(), "\n")
-cat("here() root:", here(), "\n")
-
-
-
-############################################################
-## Source functions
-############################################################
-
-source(here("R", "getPhyloMatrix.R"))
-source(here("R", "spectral_decomp.R"))
-source(here("R", "run_simulation_global.R"))
-source(here("R", "simulation_core_global.R"))
-source(here("R", "get_num.eig.R"))
-source(here("R", "fit_model_current2.R"))
-
-############################################################
-## Command line arguments
-############################################################
-
-args <- commandArgs(trailingOnly = TRUE)
-
-if(length(args) != 9){
-  stop("Expected 9 command line arguments.")
-}
-
-family <- args[1]
-signal <- args[2]
-r <- as.numeric(args[3])
-c_val <- as.numeric(args[4])
-sigma2 <- as.numeric(args[5])
-globalTest <- as.logical(args[6])
-p <- as.numeric(args[7])
-nsim   <- as.numeric(args[8])
-seed   <- as.numeric(args[9])
-
-set.seed(seed)
-
-############################################################
-## Load phylogenetic tree
-############################################################
-
-tree_file <- here("data", "example.tre")
-
-if(!file.exists(tree_file)){
-  stop("Tree file not found: ", tree_file)
-}
-
-tree <- ape::read.tree(tree_file)
-
-############################################################
-## Run simulation
-############################################################
-
-res <- run_simulation(
-  family_type = family,
-  signal_type = signal,
-  r = r,
-  c_val = c_val,
-  sigma2 = sigma2,
-  globalTest = globalTest,
-  p = p,
-  nsim = nsim,
-  seed = seed,
-  tree = tree
-)
-
-############################################################
-## Save output
-############################################################
-
-outfile <- here(
-  "output",
-  paste0(
-    "res_",
-    family, "_",
-    signal, "_",
-    p, "_",
-    c_val, "_",
-    seed,
-    ".rds"
-  )
-)
-
-dir.create(here("output"), showWarnings = FALSE)
-saveRDS(res, outfile)
-
-cat("Finished:", outfile, "\n")
-
-# params <- expand.grid(
-#   signal = c("v1", "vp"),
-#   family = c("poisson"),
-#   rep = 1:100,
-#   c_val = c(0.3, 0.6, 0.9)
-# )
-# params$seed <- 1000 + seq_len(nrow(params))
-
-
-
-
-rm(list = ls())
 
 ############################################################
 ## Simulation runner for Katana HPC
@@ -151,18 +40,18 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(ape)
-library(here)
+
 
 ############################################################
 ## Source custom functions
 ############################################################
 
-source(here("R", "functions", "getPhyloMatrix.R"))
-source(here("R", "functions", "spectral_decomp.R"))
-source(here("R", "functions", "run_simulation_global.R"))
-source(here("R", "functions", "simulation_core_global.R"))
-source(here("R", "functions", "get_num.eig.R"))
-source(here("R", "functions", "fit_model_current2.R"))
+source(here("R", "getPhyloMatrix.R"))
+source(here("R", "spectral_decomp.R"))
+source(here("R", "run_simulation_global.R"))
+source(here("R", "simulation_core_global.R"))
+source(here("R", "get_num.eig.R"))
+source(here("R", "fit_model_current2.R"))
 
 ############################################################
 ## Read command line arguments
