@@ -4,6 +4,8 @@
 .Ruserdata
 
 # Generated results
+output/
+results/
 results/*.rds
 results/*.RData
 
@@ -14,3 +16,4 @@ figures/*.pdf
 # Large raw data
 data/*.rds
 data/*.csv
+
