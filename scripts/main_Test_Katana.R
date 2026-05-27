@@ -1,8 +1,4 @@
 rm(list = ls())
-
-cat("Working directory:", getwd(), "\n")
-cat("here() root:", here(), "\n")
-
 library(MASS)
 library(glmmTMB)
 library(vegan)
@@ -12,6 +8,11 @@ library(tidyr)
 library(purrr)
 library(ape)
 library(here)
+
+cat("Working directory:", getwd(), "\n")
+cat("here() root:", here(), "\n")
+
+
 
 ############################################################
 ## Source functions
