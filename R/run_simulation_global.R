@@ -41,6 +41,7 @@ run_simulation <- function(signal_type,
     c_val = c_val,
     model = names(power_res),
     power = as.numeric(power_res),
+    globalTest = globalTest,
     seed = seed
   )
   

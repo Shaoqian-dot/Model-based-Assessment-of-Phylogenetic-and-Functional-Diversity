@@ -94,7 +94,7 @@ res_all <- grid |>
   })
 
 res_mean <- res_all %>%
-  group_by(signal, family, p, c_val, model) %>%
+  group_by(signal, family, p, c_val, model, globalTest) %>%
   summarise(
     power = mean(power, na.rm = TRUE),
     .groups = "drop"

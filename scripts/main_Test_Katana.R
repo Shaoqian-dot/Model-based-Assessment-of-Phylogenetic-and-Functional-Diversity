@@ -157,7 +157,8 @@ outfile <- here(
     family, "_",
     signal, "_p", p,
     "_c", c_val,
-    "_seed", seed,
+    "_global", globalTest,
+    "_seed", seed, 
     ".rds"
   )
 )

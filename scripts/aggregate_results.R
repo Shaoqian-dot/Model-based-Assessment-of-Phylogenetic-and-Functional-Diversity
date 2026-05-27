@@ -43,7 +43,8 @@ res_summary <- res_all %>%
     signal,
     p,
     c_val,
-    model
+    model,
+    globalTest
   ) %>%
   summarise(
     power = mean(power, na.rm = TRUE),
@@ -57,7 +58,8 @@ res_summary <- res_all %>%
 res_summary_filter <- res_summary %>%
   filter(
     family == "gaussian",
-    c_val == 0.6
+    c_val == 0.6,
+    globalTest == TRUE
   )
 p_vec <- unique(res_summary_filter$p)
 ggplot(
