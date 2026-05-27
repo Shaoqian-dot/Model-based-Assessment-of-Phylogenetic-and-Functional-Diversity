@@ -18,12 +18,12 @@ cat("here() root:", here(), "\n")
 ## Source functions
 ############################################################
 
-source(here("R", "functions", "getPhyloMatrix.R"))
-source(here("R", "functions", "spectral_decomp.R"))
-source(here("R", "functions", "run_simulation_global.R"))
-source(here("R", "functions", "simulation_core_global.R"))
-source(here("R", "functions", "get_num.eig.R"))
-source(here("R", "functions", "fit_model_current2.R"))
+source(here("R", "getPhyloMatrix.R"))
+source(here("R", "spectral_decomp.R"))
+source(here("R", "run_simulation_global.R"))
+source(here("R", "simulation_core_global.R"))
+source(here("R", "get_num.eig.R"))
+source(here("R", "fit_model_current2.R"))
 
 ############################################################
 ## Command line arguments
