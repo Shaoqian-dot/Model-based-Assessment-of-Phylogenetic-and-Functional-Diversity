@@ -57,9 +57,9 @@ res_summary <- res_all %>%
 ############################################################
 res_summary_filter <- res_summary %>%
   filter(
-    family == "gaussian",
-    c_val == 0.6,
-    globalTest == TRUE
+    family == "poisson",
+    c_val == 0.9,
+    globalTest == FALSE
   )
 p_vec <- unique(res_summary_filter$p)
 ggplot(

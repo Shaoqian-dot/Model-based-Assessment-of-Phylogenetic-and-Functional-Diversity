@@ -1,13 +1,21 @@
 run_simulation <- function(signal_type,
                            family_type,
                            globalTest,
+                           test,
+                           Swap, 
                            p,
+                           q, 
                            r,
                            c_val,
                            sigma2,
                            nsim,
                            seed,
-                           tree){
+                           tree,
+                           alpha, 
+                           beta, 
+                           quantile, 
+                           Corr,
+                           Eigen){ 
   set.seed(seed)
   
   cat("Running:", signal_type,
@@ -17,33 +25,72 @@ run_simulation <- function(signal_type,
   tmp_res <- map_dfr(
     1:nsim,
     function(sim){
-      
-      dat <- generate_data(
-        p = p,
-        r = r,
-        signal = signal_type,
-        family = family_type,
-        c_val = c_val,
-        sigma2 = sigma2,
-        tree = tree
-      )
-      
-      fit_models(dat, family = family_type, globalTest, tree = tree)
+      DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
+      P <- spectral_decomp(VC_phy_func)$P 
+      if (Swap == TRUE) {
+        # Number of swap operations
+        NOPS <- switch(as.character(p),
+                       "5"  = 1,
+                       "10" = 2,
+                       "20" = 4,
+                       "40" = 8,
+                       "80" = 16,
+                       "160" = 32,
+                       stop("Unknown p")) 
+        dat <- getData(DM_phy_func = DM_phy_func, NOPS = NOPS, q = q, 
+                       alpha = alpha, beta = beta, r = r, quantile = quantile,
+                       Corr = Corr, P = P, Eigen = Eigen, Distribution = family_type)$yX # Family_type can be "binomial" and "poisson" in swap simulations
+      } else {
+        dat <- generate_data(
+          p = p,
+          r = r,
+          signal = signal_type,
+          family = family_type,
+          c_val = c_val,
+          sigma2 = sigma2,
+          tree = tree,
+          DM_phy_func = DM_phy_func
+        )
+      }
+      fit_models(dat, family = family_type, globalTest, tree = tree, DM_phy_func = DM_phy_func)
     }
   )
   
-  power_res <- colMeans(tmp_res < 0.05, na.rm = TRUE)
+  #power_res <- colMeans(tmp_res < 0.05, na.rm = TRUE)
+  power_res <- tmp_res %>%
+    group_by(com) %>%
+    summarise(
+      across(
+        -com,
+        ~ mean(.x < 0.05, na.rm = TRUE)
+      ),
+      .groups = "drop"
+    )
   
-  res <- data.frame(
-    signal = signal_type,
-    family = family_type,
-    p = p,
-    c_val = c_val,
-    model = names(power_res),
-    power = as.numeric(power_res),
-    globalTest = globalTest,
-    seed = seed
-  )
-  
+  # res <- data.frame(
+  #   signal = signal_type,
+  #   family = family_type,
+  #   p = p,
+  #   c_val = c_val,
+  #   model = names(power_res),
+  #   power = as.numeric(power_res),
+  #   globalTest = globalTest,
+  #   seed = seed
+  # )
+  res <- power_res %>%
+    pivot_longer(
+      cols = -com,
+      names_to = "model",
+      values_to = "power"
+    ) %>%
+    mutate(
+      signal = signal_type,
+      family = family_type,
+      p = p,
+      c_val = c_val,
+      globalTest = globalTest,
+      seed = seed,
+      .before = 1
+    )
   return(res)
 }
