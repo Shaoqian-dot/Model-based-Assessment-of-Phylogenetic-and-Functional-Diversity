@@ -190,13 +190,10 @@ dir.create(
 
 outfile <- here(
   "output",
+  "20260610_trail",
   paste0(
-    "res_",
-    family, "_",
-    signal, "_p", p,
-    "_c", c_val,
-    "_global", globalTest,
-    "_seed", seed, 
+    "res_seed",
+    seed,
     ".rds"
   )
 )
