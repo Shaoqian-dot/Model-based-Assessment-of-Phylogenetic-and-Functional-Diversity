@@ -5,15 +5,10 @@ generate_data <- function(p,
                           c_val,
                           sigma2,
                           tree,
-                          DM_phy_func){
+                          V){ # Eigenvector matrix of the similarity matrix
   
   signal <- match.arg(signal)
   family <- match.arg(family)
-  
-  Phy_SM <- max(DM_phy_func) - DM_phy_func
-  
-  spec <- spectral_decomp(VC_phy_func = Phy_SM)
-  V <- spec$P
   
   vec1 <- V[, 1]
   vecp <- V[, p]

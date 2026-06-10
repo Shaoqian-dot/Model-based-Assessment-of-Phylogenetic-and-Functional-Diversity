@@ -26,6 +26,7 @@ run_simulation <- function(signal_type,
     1:nsim,
     function(sim){
       DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
+      VC_phy_func <- 1 - DM_phy_func / (max(DM_phy_func) + 1)
       P <- spectral_decomp(VC_phy_func)$P 
       if (Swap == TRUE) {
         # Number of swap operations
@@ -49,7 +50,7 @@ run_simulation <- function(signal_type,
           c_val = c_val,
           sigma2 = sigma2,
           tree = tree,
-          DM_phy_func = DM_phy_func
+          V = P
         )
       }
       fit_models(dat, family = family_type, globalTest, tree = tree, DM_phy_func = DM_phy_func)
