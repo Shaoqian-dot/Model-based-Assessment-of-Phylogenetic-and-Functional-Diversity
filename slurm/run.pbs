@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #PBS -N my_simulations
-#PBS -l mem=6gb
+#PBS -l mem=24gb
 #PBS -l walltime=11:59:59
-#PBS -J 251
+#PBS -J 2-5
 #PBS -o logs/${PBS_JOBID}.out
 #PBS -e logs/${PBS_JOBID}.err
 #PBS -j oe
@@ -20,7 +20,23 @@ PARAM_FILE=config/params.csv
 
 LINE=$(sed -n "${PBS_ARRAY_INDEX}p" $PARAM_FILE)
 
-IFS=',' read family signal r c_val sigma2 globalTest p nsim seed <<< "$LINE"
+IFS=',' read \
+family \
+signal \
+r \
+c_val \
+sigma2 \
+globalTest \
+p \
+nsim \
+seed \
+test \
+Swap \
+alpha \
+beta \
+quantile \
+Corr \
+Eigen <<< "$LINE"
 
 echo "Parameters:"
 echo "$LINE"
@@ -34,6 +50,13 @@ Rscript scripts/main_Test_Katana.R \
   $globalTest \
   $p \
   $nsim \
-  $seed
+  $seed \
+  $test \
+  $Swap \
+  $alpha \
+  $beta \
+  $quantile \
+  $Corr \
+  $Eigen
 
 echo "Job finished"
