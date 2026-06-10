@@ -1,17 +1,26 @@
 #install.packages('here')
 library(here)
 
-mat_p_sim <- cbind(rep(c(2, 4, 8, 16), c(1, 2, 5, 10)),
-                   rep(c(100, 50, 20, 10), c(1, 2, 5, 10)))
+# mat_p_sim <- cbind(rep(c(5, 10, 20, 40, 80), c(1, 2, 4, 10, 20)),
+#                    rep(c(100, 50, 25, 10, 5), c(1, 2, 4, 10, 20)))
+mat_p_sim <- cbind(rep(c(5, 10, 20, 40, 80), c(1, 2, 4, 10, 20)),
+                   rep(c(20, 10, 5, 2, 1), c(1, 2, 4, 10, 20)))
 colnames(mat_p_sim) <- c('p', 'nsim')
 params <- expand.grid(
-  family = c("gaussian", "poisson"),
-  signal = c("v1", "vp"),
+  family = c("poisson", "binomial"),
+  signal =  NA,
   row_id = seq_len(nrow(mat_p_sim)),
-  r = 80,
-  c_val = c(0.3, 0.6, 0.9),
+  r = c(4, 8, 16, 32, 64),
+  c_val =  NA_real_,
   sigma2 = 1,
-  globalTest = c(TRUE, FALSE),
+  globalTest = c(FALSE),
+  test = c("LRT", "Wald"),
+  Swap = TRUE,
+  alpha = log(9/4),
+  beta = log(2),
+  quantile = 0.25,
+  Corr = 1,
+  Eigen = c(1, 2),
   stringsAsFactors = FALSE
 )
 

@@ -9,3 +9,15 @@ get_lrt_p <- function(fit1, fit0){
   
   out$`Pr(>Chisq)`[2]
 }
+
+get_lrt_p_safe <- function(fit1, fit0){
+  
+  if (inherits(fit1, "try-error"))
+    return(NA_real_)
+  
+  if (inherits(fit0, "try-error"))
+    return(NA_real_)
+  
+  get_lrt_p(fit1, fit0)
+}
+

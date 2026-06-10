@@ -18,17 +18,18 @@ source("R/getPhyloMatrix.R")
 source("R/spectral_decomp.R")
 source("R/run_simulation_global.R")
 source("R/simulation_core_global.R")
-source("R/get_num.eig.R")
+source("R/get_num.eig.R") # The default method is 'Method3'
 source("R/fit_model_current2.R")
 source("R/getData_current.R")
 source("R/GroupingPairs.R")
 source("R/mean_matrix_current.R")
 source("R/sample_pairs.R")
 source("R/U_current.R")
-source("R/getPhyloMatrix.R")
 source("R/getChisquare_fixed.R")
 source("R/getData_nonSwap.R")
 source("R/Test_LRT.R")
+source("R/getChisquare.R")
+#source("R/Test_Wald.R")
 ############################################################
 ### Settings
 ############################################################
@@ -59,34 +60,39 @@ tree <- ape::read.tree(tree_file)
 ## Main simulation runner
 ###########################################################
 
-families <- c("gaussian")
-test <- "Wald" # Or LRT
+families <- c("binomial")
+test <- "LRT" # Or LRT
 signals <- c("v1", "vp")
-globalTest <- TRUE
-alpha
-beta
-quantile
+globalTest <- FALSE
+alpha <- log(9/4)
+beta <- log(2)
+quantile <- 0.25
 
-mat_p_sim <- cbind(rep(c(2, 4, 8, 16), c(2, 1)),
-                   rep(c(10, 20), c(2, 1)))
+mat_p_sim <- cbind(rep(c(5), c(1)),
+                   rep(c(10), c(1)))
 colnames(mat_p_sim) <- c('p', 'nsim')
 
 grid <- expand.grid(
+  # Common inputs
   family = families,
-  test = test,
-  signal = signals,
+  globalTest = globalTest,
   row_id = seq_len(nrow(mat_p_sim)),
   r = 80,
-  c_val = 0.6,
-  sigma2 = 1,
-  globalTest = TRUE,
   Swap = TRUE,
+  
+  # Swap DGM 
+  test = test,
   q = 5,
   alpha = alpha,
   beta = beta,
   quantile = quantile,
   Corr = 1,
   Eigen = 1,
+  
+  # nonSwap DGM
+  sigma2 = 1,
+  signal = signals,
+  c_val = 0.6,
   stringsAsFactors = FALSE
 )
 mat_p_sim_expand <- lapply(grid$row_id, function(i) mat_p_sim[i, ])
@@ -98,7 +104,7 @@ grid$row_id <- NULL
 
 res_all <- grid |>
   pmap_dfr(function(family, signal, globalTest, p, r, c_val, sigma2,
-                    nsim, seed){
+                    nsim, seed, Swap, test, q, alpha, beta, quantile, Corr, Eigen){
     
     run_simulation(
       signal_type = signal,
@@ -123,7 +129,7 @@ res_all <- grid |>
   })
 
 res_mean <- res_all %>%
-  group_by(signal, family, p, c_val, model, globalTest) %>%
+  group_by(signal, family, p, c_val, model, globalTest, com) %>%
   summarise(
     power = mean(power, na.rm = TRUE),
     .groups = "drop"

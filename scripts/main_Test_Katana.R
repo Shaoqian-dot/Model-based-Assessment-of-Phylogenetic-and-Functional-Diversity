@@ -50,8 +50,17 @@ source(here("R", "getPhyloMatrix.R"))
 source(here("R", "spectral_decomp.R"))
 source(here("R", "run_simulation_global.R"))
 source(here("R", "simulation_core_global.R"))
-source(here("R", "get_num.eig.R"))
+source(here("R", "get_num.eig.R")) # The default method is 'Method3'
 source(here("R", "fit_model_current2.R"))
+source(here("R", "getData_current.R"))
+source(here("R", "GroupingPairs.R"))
+source(here("R", "mean_matrix_current.R"))
+source(here("R", "sample_pairs.R"))
+source(here("R", "U_current.R"))
+source(here("R", "getChisquare_fixed.R"))
+source(here("R", "getData_nonSwap.R"))
+source(here("R", "Test_LRT.R"))
+source(here("R", "getChisquare.R"))
 
 ############################################################
 ## Read command line arguments
@@ -59,10 +68,12 @@ source(here("R", "fit_model_current2.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 
-if(length(args) != 9){
+expected_n <- 16
+
+if (length(args) != expected_n) {
   stop(
     paste0(
-      "Expected 9 command line arguments.\n",
+      "Expected ", expected_n, " command line arguments.\n",
       "Received: ", length(args)
     )
   )
@@ -72,15 +83,28 @@ if(length(args) != 9){
 ## Parse arguments
 ############################################################
 
-family     <- args[1]
-signal     <- args[2]
+family      <- args[1]
+signal      <- args[2]
+
 r           <- as.numeric(args[3])
 c_val       <- as.numeric(args[4])
 sigma2      <- as.numeric(args[5])
-globalTest <- as.logical(args[6])
+
+globalTest  <- as.logical(args[6])
+
 p           <- as.numeric(args[7])
 nsim        <- as.numeric(args[8])
 seed        <- as.numeric(args[9])
+
+test        <- args[10]
+Swap        <- as.logical(args[11])
+
+alpha       <- as.numeric(args[12])
+beta        <- as.numeric(args[13])
+quantile    <- as.numeric(args[14])
+
+Corr        <- args[15]
+Eigen       <- args[16]
 
 ############################################################
 ## Set random seed
@@ -103,6 +127,13 @@ cat("globalTest  :", globalTest, "\n")
 cat("p           :", p, "\n")
 cat("nsim        :", nsim, "\n")
 cat("seed        :", seed, "\n")
+cat("test        :", test, "\n")
+cat("Swap        :", Swap, "\n")
+cat("alpha       :", alpha, "\n")
+cat("beta        :", beta, "\n")
+cat("quantile    :", quantile, "\n")
+cat("Corr        :", Corr, "\n")
+cat("Eigen       :", Eigen, "\n")
 cat("----------------------------------------\n\n")
 
 ############################################################
@@ -133,7 +164,14 @@ res <- run_simulation(
   p = p,
   nsim = nsim,
   seed = seed,
-  tree = tree
+  tree = tree,
+  test = test,
+  Swap = Swap,
+  alpha = alpha,
+  beta = beta,
+  quantile = quantile,
+  Corr = Corr,
+  Eigen = Eigen
 )
 
 ############################################################
