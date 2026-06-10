@@ -1,6 +1,6 @@
 fit_models <- function(dat, family = c("gaussian", "poisson", "binomial"), 
                        globalTest, tree, test = c("LRT", "Wald"),
-                       DM_phy_func){
+                       Phy_SM){
   
   family <- match.arg(family)
   test <- match.arg(test)
@@ -56,7 +56,6 @@ fit_models <- function(dat, family = c("gaussian", "poisson", "binomial"),
   } else {
     p <- nlevels(dat$long$sp)
     q <- nlevels(dat$long$com)
-    Phy_SM <- max(DM_phy_func) - DM_phy_func
     I_p <- diag(p) 
     J <- I_p - 1/p * matrix(1, p, p)   # centering matrix
     S_J <- t(J) %*% Phy_SM %*% J  # centered similarity matrix
