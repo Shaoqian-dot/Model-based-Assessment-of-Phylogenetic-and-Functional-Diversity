@@ -47,9 +47,18 @@ run_simulation <- function(signal_type,
                        "80" = 16,
                        "160" = 32,
                        stop("Unknown p")) 
-        dat <- getData(DM_phy_func = DM_phy_func, NOPS = NOPS, q = q, 
-                       alpha = alpha, beta = beta, r = r, quantile = quantile,
-                       Corr = Corr, P = V_J[, c(1 : (p - 1))], Eigen = Eigen, Distribution = family_type)$yX # Family_type can be "binomial" and "poisson" in swap simulations
+        dat <- getData(DM_phy_func = DM_phy_func, 
+                       NOPS = NOPS, 
+                       q = q, 
+                       alpha = alpha, 
+                       beta = beta, 
+                       r = r, 
+                       quantile = quantile,
+                       Corr = Corr, 
+                       P = V_J[, c(1 : (p - 1))], 
+                       Eigen = Eigen, 
+                       Distribution = family_type, 
+                       p = p)$yX # Family_type can be "binomial" and "poisson" in swap simulations
       } else {
         dat <- generate_data(
           p = p,

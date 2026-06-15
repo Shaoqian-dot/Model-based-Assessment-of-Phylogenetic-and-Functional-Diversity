@@ -1,22 +1,20 @@
 # Create a function for producing a mean matrix
-# U() must be defined externally and return a matrix of dimension (q*r) x m
+# U() must be defined externally and return a matrix of dimension (q*r) x p
 mean_matrix <- function (Index_change, beta, alpha, 
-                         q, r, NOPS, Corr, P, Eigen, Distribution){
-  # Number of species
-  m <- nrow(P)
+                         q, r, NOPS, Corr, P, Eigen, Distribution, p){
   
-  # Construct (q-1) rows, each with m elements, alternating between -beta and beta
-  Means_logit_beta <- rep(rep(c(-beta, beta), length.out = m), times = q - 1)
+  # Construct (q-1) rows, each with p elements, alternating between -beta and beta
+  Means_logit_beta <- rep(rep(c(-beta, beta), length.out = p), times = q - 1)
   
-  # Construct the last row (community 5), each with m elements,
+  # Construct the last row (community 5), each with p elements,
   # alternating between (alpha - beta) and (alpha + beta)
-  Means_logit_alpha <- rep(c(alpha - beta, alpha + beta), length.out = m)
+  Means_logit_alpha <- rep(c(alpha - beta, alpha + beta), length.out = p)
   
   # Concatenate all rows into a single vector
   Means_logit <- c(Means_logit_beta, Means_logit_alpha)
   
-  # Reshape into a q x m matrix (row-wise filling)
-  Mean_matrix_logit <- matrix(Means_logit, c(q, m), byrow = TRUE)
+  # Reshape into a q x p matrix (row-wise filling)
+  Mean_matrix_logit <- matrix(Means_logit, c(q, p), byrow = TRUE)
   
   # Loop over groups (excluding the first and last group)
   for (i in 2 : (q - 1)){
@@ -42,10 +40,10 @@ mean_matrix <- function (Index_change, beta, alpha,
   # If correlation structure is required
   if (Corr == 1){
     
-    # Generate random effect matrix U_M of dimension (q*r) x m
-    U_M <- U(p = m, r = r, q = q, P = P, Eigen = Eigen)
+    # Generate random effect matrix U_M of dimension (q*r) x p
+    U_M <- U(p = p, r = r, q = q, P = P, Eigen = Eigen)
     
-    # Expand mean matrix to (q*r) x m and add random effects
+    # Expand pean patrix to (q*r) x p and add random effects
     # Then apply inverse logit transformation
     Mean_matrix_logit_cor <- Mean_matrix_logit[rep(1 : q, each = r), ] + U_M
     

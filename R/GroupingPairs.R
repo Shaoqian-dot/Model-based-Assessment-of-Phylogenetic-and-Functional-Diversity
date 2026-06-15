@@ -1,7 +1,7 @@
 # The idea here is to separate 
-GroupingPairs <- function(DM_phy_func, quantile){
+GroupingPairs <- function(DM_phy_func, quantile, p){
   # Number of species
-  m <- nrow(DM_phy_func)
+  m <- p
   
   # Initialize lists (use list for efficiency, convert later if needed)
   Index_No_change   <- integer(0)
