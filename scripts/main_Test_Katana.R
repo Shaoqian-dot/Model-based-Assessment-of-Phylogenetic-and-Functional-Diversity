@@ -126,7 +126,7 @@ Eigen       <- as.numeric(args[13])
 p           <- as.numeric(args[14])
 nsim        <- as.numeric(args[15])
 seed        <- as.numeric(args[16])
-
+q <- 5
 
 
 
@@ -188,6 +188,7 @@ res <- run_simulation(
   sigma2 = sigma2,
   globalTest = globalTest,
   p = p,
+  q = q,
   nsim = nsim,
   seed = seed,
   tree = tree,
@@ -204,10 +205,12 @@ res <- run_simulation(
 ## Create output directory
 ############################################################
 
+run_name <- "20260615_trial"
+
 dir.create(
-  here("output"),
-  showWarnings = FALSE,
-  recursive = TRUE
+  here("output", run_name),
+  recursive = TRUE,
+  showWarnings = FALSE
 )
 
 ############################################################
@@ -216,7 +219,7 @@ dir.create(
 
 outfile <- here(
   "output",
-  "20260610_trail",
+  run_name,
   paste0(
     "res_seed",
     seed,

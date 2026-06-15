@@ -30,7 +30,13 @@ run_simulation <- function(signal_type,
     function(sim){
       DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
       VC_phy_func <- 1 - DM_phy_func / (max(DM_phy_func) + 1)
-      V <- spectral_decomp(VC_phy_func)$P 
+
+      I_p <- diag(p) 
+      J <- I_p - 1/p * matrix(1, p, p)   # centering matrix
+      S_J <- t(J) %*% VC_phy_func %*% J  # centered similarity matrix
+      eig <- spectral_decomp(VC_phy_func = S_J)
+      V_J <- eig$P # eigenvectors of the new similarity matrix
+      
       if (Swap == TRUE) {
         # Number of swap operations
         NOPS <- switch(as.character(p),
@@ -43,7 +49,7 @@ run_simulation <- function(signal_type,
                        stop("Unknown p")) 
         dat <- getData(DM_phy_func = DM_phy_func, NOPS = NOPS, q = q, 
                        alpha = alpha, beta = beta, r = r, quantile = quantile,
-                       Corr = Corr, P = V, Eigen = Eigen, Distribution = family_type)$yX # Family_type can be "binomial" and "poisson" in swap simulations
+                       Corr = Corr, P = V_J[, c(1 : (p - 1))], Eigen = Eigen, Distribution = family_type)$yX # Family_type can be "binomial" and "poisson" in swap simulations
       } else {
         dat <- generate_data(
           p = p,
@@ -53,7 +59,7 @@ run_simulation <- function(signal_type,
           c_val = c_val,
           sigma2 = sigma2,
           tree = tree,
-          V = V
+          V = V_J
         )$long
       }
       fit_models(dat, 

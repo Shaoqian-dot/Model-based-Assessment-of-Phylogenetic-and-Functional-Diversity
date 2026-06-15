@@ -7,6 +7,7 @@ fit_models <- function(dat,
                        Phy_SM,
                        p,
                        q){
+  # Likelihood Ratio Test
   get_lrt_row <- function(j){
     
     com_left <- setdiff(2:q, j)
@@ -57,6 +58,7 @@ fit_models <- function(dat,
     )
   }
   
+  # Wald Test
   get_wald_row <- function(j){
     
     label <- paste0(
