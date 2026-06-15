@@ -3,9 +3,9 @@
 #PBS -N my_simulations
 #PBS -l mem=24gb
 #PBS -l walltime=11:59:59
-#PBS -J 2-5
-#PBS -o logs/${PBS_JOBID}.out
-#PBS -e logs/${PBS_JOBID}.err
+#PBS -J 2-81
+#PBS -o logs/
+#PBS -e logs/
 #PBS -j oe
 
 cd $PBS_O_WORKDIR
