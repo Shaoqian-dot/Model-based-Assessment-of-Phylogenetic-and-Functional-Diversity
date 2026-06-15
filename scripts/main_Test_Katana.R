@@ -63,13 +63,36 @@ source(here("R", "Test_LRT.R"))
 source(here("R", "getChisquare.R"))
 
 ############################################################
-## Read command line arguments
+## Read simulation parameters
 ############################################################
+
+## ---------------------------------------------------------
+## Local debugging mode
+## Mimic command-line arguments by reading the first row
+## of config/params.csv. This block can be used when
+## testing the script interactively in RStudio or locally.
+## ---------------------------------------------------------
+
+# params <- read.csv("config/params.csv", stringsAsFactors = FALSE)
+# 
+# # Convert the first parameter set into a character vector
+# # matching the format returned by commandArgs()
+# args <- as.character(unlist(params[1, ]))
+# 
+# print(args)
+
+## ---------------------------------------------------------
+## Katana / PBS execution mode
+## Read arguments supplied from the job submission script.
+## This overwrites the local debugging arguments above.
+## ---------------------------------------------------------
 
 args <- commandArgs(trailingOnly = TRUE)
 
 expected_n <- 16
 
+# Check that the expected number of arguments has been
+# supplied before proceeding with the simulation.
 if (length(args) != expected_n) {
   stop(
     paste0(
@@ -91,20 +114,23 @@ c_val       <- as.numeric(args[4])
 sigma2      <- as.numeric(args[5])
 
 globalTest  <- as.logical(args[6])
+test        <- args[7]  
+Swap        <- as.logical(args[8])  
+alpha       <- as.numeric(args[9])
+beta        <- as.numeric(args[10])
+quantile    <- as.numeric(args[11]) 
 
-p           <- as.numeric(args[7])
-nsim        <- as.numeric(args[8])
-seed        <- as.numeric(args[9])
+Corr        <- as.numeric(args[12])
+Eigen       <- as.numeric(args[13])
 
-test        <- args[10]
-Swap        <- as.logical(args[11])
+p           <- as.numeric(args[14])
+nsim        <- as.numeric(args[15])
+seed        <- as.numeric(args[16])
 
-alpha       <- as.numeric(args[12])
-beta        <- as.numeric(args[13])
-quantile    <- as.numeric(args[14])
 
-Corr        <- args[15]
-Eigen       <- args[16]
+
+
+
 
 ############################################################
 ## Set random seed
