@@ -1,6 +1,6 @@
-U <- function(r, q, P, Eigen){
+U <- function(p, r, q, P, Eigen){
   # Number of species
-  m <- ncol(P)
+  m <- p
   
   # Initialize U matrix of size (r*q) x m
   U <- matrix(NA, r * q, m)

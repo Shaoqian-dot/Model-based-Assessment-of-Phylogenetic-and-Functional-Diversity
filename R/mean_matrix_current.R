@@ -43,7 +43,7 @@ mean_matrix <- function (Index_change, beta, alpha,
   if (Corr == 1){
     
     # Generate random effect matrix U_M of dimension (q*r) x m
-    U_M <- U(r = r, q = q, P = P, Eigen = Eigen)
+    U_M <- U(p = m, r = r, q = q, P = P, Eigen = Eigen)
     
     # Expand mean matrix to (q*r) x m and add random effects
     # Then apply inverse logit transformation
