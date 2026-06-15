@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output"),
+  here("output", "20260615_trial"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -44,7 +44,8 @@ res_summary <- res_all %>%
     p,
     c_val,
     model,
-    globalTest
+    globalTest,
+    com
   ) %>%
   summarise(
     power = mean(power, na.rm = TRUE),
