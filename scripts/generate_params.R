@@ -14,7 +14,7 @@ params <- expand.grid(
   c_val =  NA_real_,
   sigma2 = NA,
   globalTest = c(FALSE),
-  test = c("Wald"),
+  test = c("LRT"),
   Swap = TRUE,
   alpha = log(9/4),
   beta = log(2),

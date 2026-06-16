@@ -62,13 +62,14 @@ res_summary <- res_all %>%
 res_summary_filter <- res_summary %>%
   filter(
     family == "poisson",
-    c_val == 0.9,
-    globalTest == FALSE
+    Eigen == 1,
+    globalTest == FALSE,
+    com == 2
   )
 p_vec <- unique(res_summary_filter$p)
 ggplot(
   res_summary_filter,
-  aes(x = p,
+  aes(x = r,
       y = power,
       color = model)
 ) +
