@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "20260615_trial"),
+  here("output", "Diversity_Poisson_p5_Wald"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -42,9 +42,12 @@ res_summary <- res_all %>%
     family,
     signal,
     p,
+    r,
     c_val,
     model,
     globalTest,
+    test,
+    Eigen,
     com
   ) %>%
   summarise(

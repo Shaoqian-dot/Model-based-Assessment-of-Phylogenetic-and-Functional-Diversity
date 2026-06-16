@@ -102,9 +102,12 @@ run_simulation <- function(signal_type,
       signal = signal_type,
       family = family_type,
       p = p,
+      r = r,
       c_val = c_val,
       globalTest = globalTest,
+      test = test,
       seed = seed,
+      Eigen = Eigen,
       .before = 1
     )
   
