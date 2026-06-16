@@ -60,7 +60,7 @@ tree <- ape::read.tree(tree_file)
 ## Main simulation runner
 ###########################################################
 
-families <- c("binomial")
+families <- c("poisson")
 test <- "LRT" # Or LRT
 signals <- c("v1", "vp")
 globalTest <- FALSE
@@ -69,7 +69,7 @@ beta <- log(2)
 quantile <- 0.25
 
 mat_p_sim <- cbind(rep(c(5), c(1)),
-                   rep(c(10), c(1)))
+                   rep(c(1), c(1)))
 colnames(mat_p_sim) <- c('p', 'nsim')
 
 grid <- expand.grid(
@@ -90,9 +90,9 @@ grid <- expand.grid(
   Eigen = 1,
   
   # nonSwap DGM
-  sigma2 = 1,
+  sigma2 = NA,
   signal = signals,
-  c_val = 0.6,
+  c_val = NA,
   stringsAsFactors = FALSE
 )
 mat_p_sim_expand <- lapply(grid$row_id, function(i) mat_p_sim[i, ])
