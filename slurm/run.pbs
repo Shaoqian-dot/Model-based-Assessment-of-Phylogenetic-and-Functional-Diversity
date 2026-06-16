@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #PBS -N my_simulations
-#PBS -l mem=24gb
+#PBS -l mem=4gb
 #PBS -l walltime=11:59:59
-#PBS -J 2-5
+#PBS -J 2-1001
 #PBS -o logs/
 #PBS -e logs/
 #PBS -j oe
