@@ -205,7 +205,7 @@ res <- run_simulation(
 ## Create output directory
 ############################################################
 
-run_name <- "Diversity_p5_Wald"
+run_name <- "Diversity_Poisson_p5_Wald"
 
 dir.create(
   here("output", run_name),
