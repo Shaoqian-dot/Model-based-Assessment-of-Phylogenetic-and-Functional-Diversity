@@ -122,12 +122,13 @@ quantile    <- as.numeric(args[11])
 
 Corr        <- as.numeric(args[12])
 Eigen       <- as.numeric(args[13])
+Method      <- args[14]
+Methods_para<- as.numeric(args[15])
 
-p           <- as.numeric(args[14])
-nsim        <- as.numeric(args[15])
-seed        <- as.numeric(args[16])
-Method      <- args[17]
-Methods_para<- as.numeric(args[18])
+p           <- as.numeric(args[16])
+nsim        <- as.numeric(args[17])
+seed        <- as.numeric(args[18])
+
 q <- 5
 
 
@@ -162,6 +163,8 @@ cat("beta        :", beta, "\n")
 cat("quantile    :", quantile, "\n")
 cat("Corr        :", Corr, "\n")
 cat("Eigen       :", Eigen, "\n")
+cat("Method      :", Method, "\n")
+cat("Methods_para:", Methods_para, "\n")
 cat("----------------------------------------\n\n")
 
 ############################################################
