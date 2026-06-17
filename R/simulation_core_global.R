@@ -6,7 +6,9 @@ fit_models <- function(dat,
                        test = c("LRT", "Wald"),
                        Phy_SM,
                        p,
-                       q){
+                       q,
+                       Method,
+                       Methods_para){
   # Likelihood Ratio Test
   get_lrt_row <- function(j){
     
@@ -155,7 +157,7 @@ fit_models <- function(dat,
     eig <- spectral_decomp(VC_phy_func = S_J)
     V_J <- eig$P # eigenvectors of the new similarity matrix
     D_J <- eig$D # eigenvalues of the new similarity matrix
-    val_num.eig <- get_num.eig(Methods = 'Method3', Methods_para = NA, D = D_J)
+    val_num.eig <- get_num.eig(Methods = Method, Methods_para = Methods_para, D = D_J)
     fit_glmm_no_rr <- try(
       fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE,
                                  yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 

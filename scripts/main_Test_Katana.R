@@ -89,7 +89,7 @@ source(here("R", "getChisquare.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 
-expected_n <- 16
+expected_n <- 18
 
 # Check that the expected number of arguments has been
 # supplied before proceeding with the simulation.
@@ -126,6 +126,8 @@ Eigen       <- as.numeric(args[13])
 p           <- as.numeric(args[14])
 nsim        <- as.numeric(args[15])
 seed        <- as.numeric(args[16])
+Method      <- args[17]
+Methods_para<- as.numeric(args[18])
 q <- 5
 
 
@@ -198,14 +200,16 @@ res <- run_simulation(
   beta = beta,
   quantile = quantile,
   Corr = Corr,
-  Eigen = Eigen
+  Eigen = Eigen,
+  Method = Method,
+  Methods_para = Methods_para
 )
 
 ############################################################
 ## Create output directory
 ############################################################
 
-run_name <- "Diversity_Poisson_p5_LRT"
+run_name <- "Diversity_Poisson_p5_Wald_Method1_2"
 
 dir.create(
   here("output", run_name),

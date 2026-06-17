@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p5_Wald"),
+  here("output", "Diversity_Poisson_p5_LRT"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -64,7 +64,7 @@ res_summary_filter <- res_summary %>%
     family == "poisson",
     Eigen == 1,
     globalTest == FALSE,
-    com == 2
+    com == 5
   )
 p_vec <- unique(res_summary_filter$p)
 ggplot(

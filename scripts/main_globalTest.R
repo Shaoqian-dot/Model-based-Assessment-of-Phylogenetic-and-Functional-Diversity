@@ -124,7 +124,9 @@ res_all <- grid |>
       beta = beta,
       quantile = quantile,
       Corr = Corr,
-      Eigen = Eigen
+      Eigen = Eigen,
+      Method = 'Method1',
+      Methods_para = 2
     )
   })
 

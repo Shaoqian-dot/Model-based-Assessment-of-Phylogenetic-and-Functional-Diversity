@@ -18,7 +18,9 @@ run_simulation <- function(signal_type,
                            beta, 
                            quantile, 
                            Corr,
-                           Eigen){ 
+                           Eigen,
+                           Method,
+                           Methods_para){ 
   set.seed(seed)
   
   cat("Running:", signal_type,
@@ -78,7 +80,9 @@ run_simulation <- function(signal_type,
                  Phy_SM = VC_phy_func, 
                  p = p, 
                  q = q,
-                 test = test)
+                 test = test,
+                 Method = Method,
+                 Methods_para = Methods_para)
     }
   )
   
