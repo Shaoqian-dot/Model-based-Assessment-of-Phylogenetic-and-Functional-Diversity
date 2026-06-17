@@ -110,8 +110,11 @@ tree <- ape::read.tree(tree_file)
 D <- getPhyloMatrix(tree = tree, m = p)
 plot(subtree)
 
-S <- 1 - D/(max(D) + 1)
+#S <- 1 - D/(max(D) + 1)
+S <- max(D) - D
 eigen <- eigen(S)
+D_eigen <- diag(eigen$values)
+D_eigen
 V <- eigen$vectors
 J <- diag(rep(1, p)) - 1/p * matrix(1, p, p)
 V_sub <- J %*% V
@@ -130,7 +133,9 @@ V_sub
 V_sub[, pivot_cols]
 
 # Calculate the number of eligible contrasts under Method 3
-D_eigen_new <- diag(eigen_new$values[1:4])
-D_eigen_new
-num <- get_num.eig("Method3", NA, D_eigen_new)
+num <- get_num.eig("Method3", NA, D_eigen)
 num
+D_eigen_new <- diag(eigen_new$values)
+D_eigen_new
+num_new <- get_num.eig("Method3", NA, D_eigen_new)
+num_new

@@ -3,7 +3,7 @@ fit_models <- function(dat,
                        family = c("gaussian", "poisson", "binomial"), 
                        globalTest, 
                        tree, 
-                       test = c("LRT", "Wald"),
+                       test = c("LRT", "Wald", "Both"),
                        Phy_SM,
                        p,
                        q,
@@ -96,7 +96,18 @@ fit_models <- function(dat,
   }
   
   family <- match.arg(family)
-  test <- match.arg(test)
+  #test <- match.arg(test)
+  
+  if(test == "Both"){
+    test <- c("Wald", "LRT")
+  } else {
+    
+  }
+  test <- match.arg(
+    test,
+    choices = c("Wald", "LRT"),
+    several.ok = TRUE
+  )
   
   dat_long <- dat
   
@@ -172,17 +183,49 @@ fit_models <- function(dat,
       silent = TRUE
     )
     
-    if (test == "LRT") {
-      res <- do.call(
+    # if (test == "LRT") {
+    #   res <- do.call(
+    #     rbind,
+    #     lapply(2:q, get_lrt_row)
+    #   )
+    # } else if (test == "Wald") {
+    #   res <- do.call(
+    #     rbind,
+    #     lapply(2:q, get_wald_row)
+    #   )
+    # }
+    
+    res_list <- list()
+    
+    if ("LRT" %in% test) {
+      
+      res_list$LRT <- do.call(
         rbind,
         lapply(2:q, get_lrt_row)
       )
-    } else if (test == "Wald") {
-      res <- do.call(
+      
+    }
+    
+    if ("Wald" %in% test) {
+      
+      res_list$Wald <- do.call(
         rbind,
         lapply(2:q, get_wald_row)
       )
+      
     }
+    res <- bind_rows(
+      lapply(
+        names(res_list),
+        function(x) {
+          cbind(
+            test = x,
+            res_list[[x]]
+          )
+        }
+      )
+    )
+    
     return(res)
     # 
     # for(j in 2 : q){

@@ -3,8 +3,8 @@ library(here)
 
 # mat_p_sim <- cbind(rep(c(5, 10, 20, 40, 80), c(1, 2, 4, 10, 20)),
 #                    rep(c(100, 50, 25, 10, 5), c(1, 2, 4, 10, 20)))
-mat_p_sim <- cbind(rep(c(5), c(100)),
-                   rep(c(1), c(100)))
+mat_p_sim <- cbind(rep(c(5), c(5)),
+                   rep(c(1), c(5)))
 colnames(mat_p_sim) <- c('p', 'nsim')
 params <- expand.grid(
   family = c("poisson"),
@@ -14,7 +14,7 @@ params <- expand.grid(
   c_val =  NA_real_,
   sigma2 = NA,
   globalTest = c(FALSE),
-  test = c("Wald"),
+  test = c('Both'),
   Swap = TRUE,
   alpha = log(9/4),
   beta = log(2),
@@ -33,6 +33,7 @@ params <- cbind(
 
 params$seed <- 10000 + seq_len(nrow(params))
 params$row_id <- NULL
+
 
 write.csv(params,
           here("config", "params.csv"),

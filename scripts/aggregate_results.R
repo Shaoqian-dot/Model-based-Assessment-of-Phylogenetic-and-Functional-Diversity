@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p5_LRT"),
+  here("output", "Diversity_Poisson_p5_Wald_Method1_2"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -59,30 +59,85 @@ res_summary <- res_all %>%
 ############################################################
 ### Power plot
 ############################################################
-res_summary_filter <- res_summary %>%
+# res_summary_filter <- res_summary %>%
+#   filter(
+#     family == "poisson",
+#     Eigen == 2,
+#     globalTest == FALSE,
+#   )
+# p_vec <- unique(res_summary_filter$p)
+# ggplot(
+#   res_summary_filter,
+#   aes(x = r,
+#       y = power,
+#       color = model)
+# ) +
+#   geom_line(linewidth = 1) +
+#   geom_point(size = 2) +
+#   facet_wrap(~ signal) +
+#   scale_x_continuous(
+#     breaks = p_vec
+#   ) +
+#   ylim(0, 1) +
+#   theme_bw() +
+#   labs(
+#     x = "Number of species (p)",
+#     y = "Power",
+#     color = "Model"
+#   )
+
+# ======================
+# User settings
+# ======================
+
+x_var <- "r"      # 改成 "p" 即可画 Power vs p
+facet_var <- "com"
+
+# ======================
+# Data filter
+# ======================
+
+plot_data <- res_summary %>%
   filter(
     family == "poisson",
     Eigen == 1,
     globalTest == FALSE,
-    com == 5
+    com %in% c(2, 3, 4, 5)
   )
-p_vec <- unique(res_summary_filter$p)
+
+x_breaks <- sort(unique(plot_data[[x_var]]))
+
+# ======================
+# Plot
+# ======================
+
 ggplot(
-  res_summary_filter,
-  aes(x = r,
-      y = power,
-      color = model)
+  plot_data,
+  aes_string(
+    x = x_var,
+    y = "power",
+    color = "model"
+  )
 ) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
-  facet_wrap(~ signal) +
-  scale_x_continuous(
-    breaks = p_vec
+  facet_wrap(
+    as.formula(paste("~", facet_var)),
+    nrow = 1
   ) +
-  ylim(0, 1) +
+  scale_x_continuous(
+    breaks = x_breaks
+  ) +
+  coord_cartesian(
+    ylim = c(0, 1)
+  ) +
   theme_bw() +
   labs(
-    x = "Number of species (p)",
+    x = ifelse(
+      x_var == "r",
+      "Sample size (r)",
+      "Number of species (p)"
+    ),
     y = "Power",
     color = "Model"
   )

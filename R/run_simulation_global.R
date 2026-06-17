@@ -87,7 +87,7 @@ run_simulation <- function(signal_type,
   )
   
   power_res <- tmp_res %>%
-    group_by(com) %>%
+    group_by(com, test) %>%
     summarise(
       across(
         where(is.numeric),
@@ -98,7 +98,7 @@ run_simulation <- function(signal_type,
   
   res <- power_res %>%
     pivot_longer(
-      cols = -com,
+      cols = -c(com, test),
       names_to = "model",
       values_to = "power"
     ) %>%
@@ -109,7 +109,6 @@ run_simulation <- function(signal_type,
       r = r,
       c_val = c_val,
       globalTest = globalTest,
-      test = test,
       seed = seed,
       Eigen = Eigen,
       .before = 1

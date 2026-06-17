@@ -61,12 +61,12 @@ tree <- ape::read.tree(tree_file)
 ###########################################################
 
 families <- c("poisson")
-test <- "LRT" # Or LRT
-signals <- c("v1", "vp")
+test <- c("Both") # Or LRT
+signals <- NA
 globalTest <- FALSE
 alpha <- log(9/4)
 beta <- log(2)
-quantile <- 0.25
+quantile <- 0.35
 
 mat_p_sim <- cbind(rep(c(5), c(1)),
                    rep(c(1), c(1)))
@@ -131,7 +131,16 @@ res_all <- grid |>
   })
 
 res_mean <- res_all %>%
-  group_by(signal, family, p, c_val, model, globalTest, com) %>%
+  group_by(family,
+           signal,
+           p,
+           r,
+           c_val,
+           model,
+           globalTest,
+           test,
+           Eigen,
+           com) %>%
   summarise(
     power = mean(power, na.rm = TRUE),
     .groups = "drop"
