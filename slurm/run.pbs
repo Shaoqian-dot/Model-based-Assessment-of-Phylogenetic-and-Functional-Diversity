@@ -36,7 +36,9 @@ alpha \
 beta \
 quantile \
 Corr \
-Eigen <<< "$LINE"
+Eigen \
+Method \
+Methods_para <<< "$LINE"
 
 echo "Parameters:"
 echo "$LINE"
@@ -57,6 +59,8 @@ Rscript scripts/main_Test_Katana.R \
   $beta \
   $quantile \
   $Corr \
-  $Eigen
+  $Eigen \
+  $Method \
+  $Methods_para
 
 echo "Job finished"
