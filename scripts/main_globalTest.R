@@ -29,6 +29,10 @@ source("R/getChisquare_fixed.R")
 source("R/getData_nonSwap.R")
 source("R/Test_LRT.R")
 source("R/getChisquare.R")
+source("R/getRaosQ.R")
+source("R/RaoQ.R")
+source("R/randomization.R")
+source("R/rand.RaoQ.fun.R")
 #source("R/Test_Wald.R")
 ############################################################
 ### Settings
@@ -38,7 +42,6 @@ set.seed(123)
 
 # p_vec  <- c(2, 4, 8, 16)
 # r      <- 80
-# nsim   <- 100
 # sigma2 <- 1
 # c_val  <- 0.6
 
@@ -68,15 +71,15 @@ alpha <- log(9/4)
 beta <- log(2)
 quantile <- 0.35
 
-mat_p_sim <- cbind(rep(c(5), c(1)),
-                   rep(c(1), c(1)))
-colnames(mat_p_sim) <- c('p', 'nsim')
+mat_p <- matrix(rep(c(5), c(1)), ncol = 1)
+colnames(mat_p) <- c('p')
 
 grid <- expand.grid(
   # Common inputs
   family = families,
   globalTest = globalTest,
-  row_id = seq_len(nrow(mat_p_sim)),
+  p = rep(c(5), c(2)),
+  #row_id = seq_len(nrow(mat_p_sim)),
   r = 80,
   Swap = TRUE,
   
@@ -93,18 +96,19 @@ grid <- expand.grid(
   sigma2 = NA,
   signal = signals,
   c_val = NA,
+  
   stringsAsFactors = FALSE
 )
-mat_p_sim_expand <- lapply(grid$row_id, function(i) mat_p_sim[i, ])
-mat_p_sim_expand <- do.call(rbind, mat_p_sim_expand)
-grid <- cbind(grid, mat_p_sim_expand)
+# mat_p_sim_expand <- lapply(grid$row_id, function(i) mat_p_sim[i, ])
+# mat_p_sim_expand <- do.call(rbind, mat_p_sim_expand)
+# grid <- cbind(grid, mat_p_sim_expand)
 
 grid$seed <- 10000 + seq_len(nrow(grid))
 grid$row_id <- NULL
 
 res_all <- grid |>
   pmap_dfr(function(family, signal, globalTest, p, r, c_val, sigma2,
-                    nsim, seed, Swap, test, q, alpha, beta, quantile, Corr, Eigen){
+                    seed, Swap, test, q, alpha, beta, quantile, Corr, Eigen){
     
     run_simulation(
       signal_type = signal,
@@ -117,7 +121,6 @@ res_all <- grid |>
       r = r,
       c_val = c_val,
       sigma2 = sigma2,
-      nsim = nsim,
       seed = seed,
       tree = tree,
       alpha = alpha,
@@ -140,9 +143,10 @@ res_mean <- res_all %>%
            globalTest,
            test,
            Eigen,
-           com) %>%
+           com,
+           method) %>%
   summarise(
-    power = mean(power, na.rm = TRUE),
+    power = mean(p_values < 0.05, na.rm = TRUE),
     .groups = "drop"
   )
 

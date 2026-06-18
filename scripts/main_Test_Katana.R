@@ -12,7 +12,7 @@ rm(list = ls())
 ## Intended usage:
 ##
 ## Rscript scripts/run_simulation.R \
-##   family signal r c_val sigma2 globalTest p nsim seed
+##   family signal r c_val sigma2 globalTest p seed
 ##
 ############################################################
 
@@ -89,7 +89,7 @@ source(here("R", "getChisquare.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 
-expected_n <- 18
+expected_n <- 17
 
 # Check that the expected number of arguments has been
 # supplied before proceeding with the simulation.
@@ -109,30 +109,26 @@ if (length(args) != expected_n) {
 family      <- args[1]
 signal      <- args[2]
 
-r           <- as.numeric(args[3])
-c_val       <- as.numeric(args[4])
-sigma2      <- as.numeric(args[5])
+p           <- as.numeric(args[3])
+r           <- as.numeric(args[4])
+c_val       <- as.numeric(args[5])
+sigma2      <- as.numeric(args[6])
 
-globalTest  <- as.logical(args[6])
-test        <- args[7]  
-Swap        <- as.logical(args[8])  
-alpha       <- as.numeric(args[9])
-beta        <- as.numeric(args[10])
-quantile    <- as.numeric(args[11]) 
+globalTest  <- as.logical(args[7])
+test        <- args[8]  
+Swap        <- as.logical(args[9])  
+alpha       <- as.numeric(args[10])
+beta        <- as.numeric(args[11])
+quantile    <- as.numeric(args[12]) 
 
-Corr        <- as.numeric(args[12])
-Eigen       <- as.numeric(args[13])
-Method      <- args[14]
-Methods_para<- as.numeric(args[15])
+Corr        <- as.numeric(args[13])
+Eigen       <- as.numeric(args[14])
+Method      <- args[15]
+Methods_para<- as.numeric(args[16])
 
-p           <- as.numeric(args[16])
-nsim        <- as.numeric(args[17])
-seed        <- as.numeric(args[18])
+seed        <- as.numeric(args[17])
 
 q <- 5
-
-
-
 
 
 ############################################################
@@ -154,7 +150,6 @@ cat("c_val       :", c_val, "\n")
 cat("sigma2      :", sigma2, "\n")
 cat("globalTest  :", globalTest, "\n")
 cat("p           :", p, "\n")
-cat("nsim        :", nsim, "\n")
 cat("seed        :", seed, "\n")
 cat("test        :", test, "\n")
 cat("Swap        :", Swap, "\n")
@@ -194,7 +189,6 @@ res <- run_simulation(
   globalTest = globalTest,
   p = p,
   q = q,
-  nsim = nsim,
   seed = seed,
   tree = tree,
   test = test,

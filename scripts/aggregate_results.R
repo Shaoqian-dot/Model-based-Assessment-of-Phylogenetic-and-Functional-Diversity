@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p5_Wald_Method1_2"),
+  here("output", "Diversity_Poisson_p5_Wald_LRT_Method1_2_trail"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -110,20 +110,27 @@ x_breaks <- sort(unique(plot_data[[x_var]]))
 # ======================
 # Plot
 # ======================
-
 ggplot(
   plot_data,
-  aes_string(
-    x = x_var,
-    y = "power",
-    color = "model"
+  aes(
+    x = .data[[x_var]],
+    y = power,
+    color = model,
+    linetype = test,
+    group = interaction(model, test)
   )
 ) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   facet_wrap(
-    as.formula(paste("~", facet_var)),
+    ~ com,
     nrow = 1
+  ) +
+  scale_linetype_manual(
+    values = c(
+      Wald = "dashed",
+      LRT = "solid"
+    )
   ) +
   scale_x_continuous(
     breaks = x_breaks
@@ -131,16 +138,38 @@ ggplot(
   coord_cartesian(
     ylim = c(0, 1)
   ) +
-  theme_bw() +
-  labs(
-    x = ifelse(
-      x_var == "r",
-      "Sample size (r)",
-      "Number of species (p)"
-    ),
-    y = "Power",
-    color = "Model"
-  )
+  theme_bw()
+
+# ggplot(
+#   plot_data,
+#   aes_string(
+#     x = x_var,
+#     y = "power",
+#     color = "model"
+#   )
+# ) +
+#   geom_line(linewidth = 1) +
+#   geom_point(size = 2) +
+#   facet_wrap(
+#     as.formula(paste("~", facet_var)),
+#     nrow = 1
+#   ) +
+#   scale_x_continuous(
+#     breaks = x_breaks
+#   ) +
+#   coord_cartesian(
+#     ylim = c(0, 1)
+#   ) +
+#   theme_bw() +
+#   labs(
+#     x = ifelse(
+#       x_var == "r",
+#       "Sample size (r)",
+#       "Number of species (p)"
+#     ),
+#     y = "Power",
+#     color = "Model"
+#   )
 
 ############################################################
 ## Create results directory

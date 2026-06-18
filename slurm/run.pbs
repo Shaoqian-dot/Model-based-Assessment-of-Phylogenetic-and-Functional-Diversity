@@ -28,7 +28,6 @@ c_val \
 sigma2 \
 globalTest \
 p \
-nsim \
 seed \
 test \
 Swap \
@@ -51,7 +50,6 @@ Rscript scripts/main_Test_Katana.R \
   $sigma2 \
   $globalTest \
   $p \
-  $nsim \
   $seed \
   $test \
   $Swap \
