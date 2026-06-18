@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p5_Wald_LRT_Method1_2_trail"),
+  here("output", "Diversity_Poisson_p5_Wald_LRT_Method1_2"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -75,7 +75,7 @@ facet_var <- "com"
 plot_data <- res_summary %>%
   filter(
     family == "poisson",
-    Eigen == 1,
+    Eigen == 2,
     globalTest == FALSE,
     com %in% c(2, 3, 4, 5)
   ) %>%
