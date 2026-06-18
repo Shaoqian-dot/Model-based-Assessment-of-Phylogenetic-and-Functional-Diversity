@@ -61,6 +61,10 @@ source(here("R", "getChisquare_fixed.R"))
 source(here("R", "getData_nonSwap.R"))
 source(here("R", "Test_LRT.R"))
 source(here("R", "getChisquare.R"))
+source(here("R", "getRaosQ.R"))
+source(here("R", "RaoQ.R"))
+source(here("R", "randomization.R"))
+source(here("R", "rand.RaoQ.fun.R"))
 
 ############################################################
 ## Read simulation parameters
