@@ -48,10 +48,11 @@ res_summary <- res_all %>%
     globalTest,
     test,
     Eigen,
-    com
+    com,
+    method
   ) %>%
   summarise(
-    power = mean(power, na.rm = TRUE),
+    power = mean(p_values < 0.05, na.rm = TRUE),
     n_jobs = n(),
     .groups = "drop"
   )
@@ -59,32 +60,6 @@ res_summary <- res_all %>%
 ############################################################
 ### Power plot
 ############################################################
-# res_summary_filter <- res_summary %>%
-#   filter(
-#     family == "poisson",
-#     Eigen == 2,
-#     globalTest == FALSE,
-#   )
-# p_vec <- unique(res_summary_filter$p)
-# ggplot(
-#   res_summary_filter,
-#   aes(x = r,
-#       y = power,
-#       color = model)
-# ) +
-#   geom_line(linewidth = 1) +
-#   geom_point(size = 2) +
-#   facet_wrap(~ signal) +
-#   scale_x_continuous(
-#     breaks = p_vec
-#   ) +
-#   ylim(0, 1) +
-#   theme_bw() +
-#   labs(
-#     x = "Number of species (p)",
-#     y = "Power",
-#     color = "Model"
-#   )
 
 # ======================
 # User settings
@@ -103,6 +78,9 @@ plot_data <- res_summary %>%
     Eigen == 1,
     globalTest == FALSE,
     com %in% c(2, 3, 4, 5)
+  ) %>%
+  mutate(
+    test_plot = ifelse(is.na(test), "Baseline", test)
   )
 
 x_breaks <- sort(unique(plot_data[[x_var]]))
@@ -110,14 +88,15 @@ x_breaks <- sort(unique(plot_data[[x_var]]))
 # ======================
 # Plot
 # ======================
+
 ggplot(
   plot_data,
   aes(
     x = .data[[x_var]],
     y = power,
     color = model,
-    linetype = test,
-    group = interaction(model, test)
+    linetype = test_plot,
+    group = interaction(model, test_plot)
   )
 ) +
   geom_line(linewidth = 1) +
@@ -129,7 +108,16 @@ ggplot(
   scale_linetype_manual(
     values = c(
       Wald = "dashed",
-      LRT = "solid"
+      LRT = "solid",
+      Baseline = "dotdash"
+    )
+  ) +
+  scale_color_manual(
+    values = c(
+      glmm_no_rr = "#1B9E77",
+      glmm_rr = "#D95F02",
+      RaosQ = "#7570B3",
+      `Randomized RaosQ` = "#E7298A"
     )
   ) +
   scale_x_continuous(
@@ -138,38 +126,17 @@ ggplot(
   coord_cartesian(
     ylim = c(0, 1)
   ) +
-  theme_bw()
-
-# ggplot(
-#   plot_data,
-#   aes_string(
-#     x = x_var,
-#     y = "power",
-#     color = "model"
-#   )
-# ) +
-#   geom_line(linewidth = 1) +
-#   geom_point(size = 2) +
-#   facet_wrap(
-#     as.formula(paste("~", facet_var)),
-#     nrow = 1
-#   ) +
-#   scale_x_continuous(
-#     breaks = x_breaks
-#   ) +
-#   coord_cartesian(
-#     ylim = c(0, 1)
-#   ) +
-#   theme_bw() +
-#   labs(
-#     x = ifelse(
-#       x_var == "r",
-#       "Sample size (r)",
-#       "Number of species (p)"
-#     ),
-#     y = "Power",
-#     color = "Model"
-#   )
+  theme_bw() +
+  labs(
+    x = ifelse(
+      x_var == "r",
+      "Sample size (r)",
+      "Number of species (p)"
+    ),
+    y = "Power",
+    color = "Model",
+    linetype = "Test"
+  )
 
 ############################################################
 ## Create results directory
