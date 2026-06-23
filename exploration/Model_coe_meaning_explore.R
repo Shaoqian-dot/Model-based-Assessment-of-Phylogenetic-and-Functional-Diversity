@@ -65,18 +65,36 @@ dat$y <- rnorm(n, mean = mu, sd = sigma)
 # 查看前几行
 head(dat)
 
-# sum to zero contrast
-#contrasts(dat$sp) = contr.sum(3)
+DM <- matrix(c(0, 1, 2, 
+               1, 0, 2,
+               2, 2, 0), 3, 3)
+SM <- 1 - DM/2
+J <- diag(c(1, 1, 1)) - 1/3 * matrix(1, 3, 3)
+SM_J <- J %*% SM %*% J
+V_J <- eigen(SM_J)$vectors
+# V_J[, c(1 : (p-1))] as contrasts, satisfying sum-to-zero
+contrasts(dat$sp) = V_J[, c(1, 2)]
+
+# Sum-to-zero contrast
+contrasts(dat$sp) = contr.sum(3)
 
 # -----------------------------
 # 2. 拟合 glmmTMB 模型
 # -------------------- ---------
 
 fit <- glmmTMB(
+  y ~ sp + com : sp,
+  data = dat,
+  family = gaussian()
+)
+summary(fit)
+
+fit <- glmmTMB(
   y ~ sp * com,
   data = dat,
   family = gaussian()
 )
+summary(fit)
 
 fit_no_Intercept <- glmmTMB(
   y ~ 0 + sp * com,
@@ -84,4 +102,4 @@ fit_no_Intercept <- glmmTMB(
   family = gaussian()
 )
 
-summary(fit)
+summary(fit_no_Intercept)
