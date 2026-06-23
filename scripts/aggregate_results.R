@@ -75,7 +75,7 @@ facet_var <- "com"
 plot_data <- res_summary %>%
   filter(
     family == "poisson",
-    Eigen == 2,
+    Eigen == 1,
     globalTest == FALSE,
     com %in% c(2, 3, 4, 5)
   ) %>%
