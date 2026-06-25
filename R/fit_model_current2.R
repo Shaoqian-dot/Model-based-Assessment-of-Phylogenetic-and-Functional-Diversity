@@ -1,9 +1,7 @@
 fit_model <- function(type, matrix_type, rr,
-                      yX, P, P_J, val_num.eig, Distribution, null, com_left){
+                      yX, P, P_J, val_num.eig, Distribution, null, com_left, p){
   # Select eigenvector matrix
   P_use <<- if (matrix_type == "P") P else P_J###############################################################
-  # Number of species
-  m <- ncol(P_use)
   
   # ===== CASE 1: contrast-based model =====
   if (type == "contrast") {
@@ -43,13 +41,13 @@ fit_model <- function(type, matrix_type, rr,
   # Lsp <- Sp %*% P_use[, 1:val_num.eig]
   # colnames(Lsp) <- paste0("p", 1:val_num.eig)
   
-  Lsp <- Sp %*% P_use[, 1:m]
-  colnames(Lsp) <- paste0("p", 1:m)
+  Lsp <- Sp %*% P_use[, 1:p]
+  colnames(Lsp) <- paste0("p", 1:p)
   
   yX_tmp <- cbind(yX, Lsp)
   
   p_vars_1 <- paste0("p", 1:val_num.eig)
-  p_vars_2 <- paste0("p", (val_num.eig + 1) : m)
+  p_vars_2 <- paste0("p", (val_num.eig + 1) : p)
   fixed_part_1 <- paste(p_vars_1, collapse = " + ")
   fixed_part_2 <- paste(p_vars_2, collapse = " + ")
   
@@ -105,7 +103,7 @@ fit_model <- function(type, matrix_type, rr,
   # ===== CASE 4: eigenvector (p_mid) model =====
   Sp <- model.matrix(~0 + sp, data = yX)
   Lsp <- Sp %*% P_use
-  colnames(Lsp) <- paste0("p", 1:m)
+  colnames(Lsp) <- paste0("p", 1:p)
 
   yX_tmp <<- cbind(yX, Lsp)
 
@@ -117,9 +115,9 @@ fit_model <- function(type, matrix_type, rr,
   # K <- diag( n_random)
   # colnames(K) <- colnames(X_propto)
   # colnames(K) <- colnames(X_propto)
-  K <- diag(m - val_num.eig)
-  colnames(K) <- paste0("p", (val_num.eig + 1) : m)
-  rownames(K) <- paste0("p", (val_num.eig + 1) : m)
+  K <- diag(p - val_num.eig)
+  colnames(K) <- paste0("p", (val_num.eig + 1) : p)
+  rownames(K) <- paste0("p", (val_num.eig + 1) : p)
   
   if (type == "p_mid") {
     # base_formula <- paste(
