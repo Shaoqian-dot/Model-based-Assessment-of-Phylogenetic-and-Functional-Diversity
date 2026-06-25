@@ -4,7 +4,7 @@ fit_models <- function(dat,
                        globalTest, 
                        tree, 
                        test = c("LRT", "Wald", "Both"),
-                       Phy_SM,
+                       S_J,
                        p,
                        q,
                        Method,
@@ -164,9 +164,6 @@ fit_models <- function(dat,
       glmm_rr    = get_lrt_p_safe(fit_glmm_rr, fit_glmm_rr_null)
     ))
   } else {
-    I_p <- diag(p) 
-    J <- I_p - 1/p * matrix(1, p, p)   # centering matrix
-    S_J <- t(J) %*% Phy_SM %*% J  # centered similarity matrix
     eig <- spectral_decomp(VC_phy_func = S_J)
     V_J <- eig$P # eigenvectors of the new similarity matrix
     D_J <- eig$D # eigenvalues of the new similarity matrix

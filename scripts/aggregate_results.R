@@ -89,7 +89,7 @@ x_breaks <- sort(unique(plot_data[[x_var]]))
 # Plot
 # ======================
 
-ggplot(
+fig <- ggplot(
   plot_data,
   aes(
     x = .data[[x_var]],
@@ -146,6 +146,17 @@ dir.create(
   here("results"),
   showWarnings = FALSE,
   recursive = TRUE
+)
+
+############################################################
+## Save figures
+############################################################
+ggsave(
+  filename = here("figures", "Diversity_Poisson_p5_Both_Method1_2.png"),
+  plot = fig,
+  width = 16,
+  height = 4.5,
+  dpi = 300
 )
 
 ############################################################
