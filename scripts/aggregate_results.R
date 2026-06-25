@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p20_Both_Method3_S2_RE(p-1-k)"),
+  here("output", "Diversity_Poisson_p20_Both_Method1_2_S2_RE(p-1-k)"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -142,7 +142,7 @@ fig
 ############################################################
 ## Create results directory
 ############################################################
-path <- 'figures/p20/poisson/Method3'
+path <- 'figures/p20/poisson/Method1'
 dir.create(
   here(path),
   showWarnings = FALSE,

@@ -6,7 +6,7 @@ library(here)
 params <- expand.grid(
   family = c("poisson"),
   signal =  NA,
-  p = rep(c(20), c(100)),
+  p = rep(c(40), c(100)),
   r = c(4, 8, 16, 32, 64),
   c_val =  NA_real_,
   sigma2 = NA,
@@ -18,8 +18,8 @@ params <- expand.grid(
   quantile = 0.35,
   Corr = 1,
   Eigen = c(1, 2),
-  Method = "Method1",
-  Method_para = 2,
+  Method = "Method3",
+  Method_para = NA,
   stringsAsFactors = FALSE
 )
 
