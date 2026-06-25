@@ -61,7 +61,7 @@ for(i in 1:n){
 sigma <- 2
 
 dat$y <- rnorm(n, mean = mu, sd = sigma)
-
+dat$tmp <- rnorm(n, mean = mu, sd = sigma)
 # 查看前几行
 head(dat)
 
@@ -81,6 +81,12 @@ contrasts(dat$sp) = contr.sum(3)
 # -----------------------------
 # 2. 拟合 glmmTMB 模型
 # -------------------- ---------
+fit <- glmmTMB(
+  y ~ sp + tmp + tmp : sp,
+  data = dat,
+  family = gaussian()
+)
+summary(fit)
 
 fit <- glmmTMB(
   y ~ sp + com : sp,
