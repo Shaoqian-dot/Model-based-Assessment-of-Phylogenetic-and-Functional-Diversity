@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p5_Wald_LRT_Method1_2"),
+  here("output", "Diversity_Poisson_p5_Wald_LRT_Method1_2_Similarity2"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -137,6 +137,7 @@ fig <- ggplot(
     color = "Model",
     linetype = "Test"
   )
+fig
 
 ############################################################
 ## Create results directory
@@ -152,7 +153,7 @@ dir.create(
 ## Save figures
 ############################################################
 ggsave(
-  filename = here("figures", "Diversity_Poisson_p5_Both_Method1_2.png"),
+  filename = here("figures", "Diversity_Poisson_p5_Both_Method1_2_Similarity2.png"),
   plot = fig,
   width = 16,
   height = 4.5,

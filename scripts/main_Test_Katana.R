@@ -210,8 +210,10 @@ res <- run_simulation(
 ## Create output directory
 ############################################################
 
-run_name <- "Diversity_Poisson_p5_Wald_LRT_Method1_2_Similarity2"
-
+run_name <- "Diversity_Poisson_p5_Both_Method1_2_S2_RE(p-1-k)"
+# S1 : 1 - DM_phy_func / (max(DM_phy_func) + 1)
+# S2 : 1 - DM_phy_func /max(DM_phy_func)
+# RE : the dimension of multivariate random effect
 dir.create(
   here("output", run_name),
   recursive = TRUE,

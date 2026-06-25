@@ -1,7 +1,7 @@
 fit_model <- function(type, matrix_type, rr,
                       yX, P, P_J, val_num.eig, Distribution, null, com_left, p){
   # Select eigenvector matrix
-  P_use <<- if (matrix_type == "P") P else P_J###############################################################
+  P_use <- if (matrix_type == "P") P else P_J###############################################################
   
   # ===== CASE 1: contrast-based model =====
   if (type == "contrast") {
@@ -47,7 +47,7 @@ fit_model <- function(type, matrix_type, rr,
   yX_tmp <- cbind(yX, Lsp)
   
   p_vars_1 <- paste0("p", 1:val_num.eig)
-  p_vars_2 <- paste0("p", (val_num.eig + 1) : p)
+  p_vars_2 <- paste0("p", (val_num.eig + 1) : (p - 1))
   fixed_part_1 <- paste(p_vars_1, collapse = " + ")
   fixed_part_2 <- paste(p_vars_2, collapse = " + ")
   
@@ -105,19 +105,11 @@ fit_model <- function(type, matrix_type, rr,
   Lsp <- Sp %*% P_use
   colnames(Lsp) <- paste0("p", 1:p)
 
-  yX_tmp <<- cbind(yX, Lsp)
+  yX_tmp <- cbind(yX, Lsp)
 
-  form_1 <- as.formula(
-    paste("~ 0 + com * (",fixed_part_2,")")
-  )
-  X_propto <- model.matrix(form_1, data = yX_tmp)
-  # n_random <- ncol(X_propto) # the number of random effects in 0 + com * fixed_part_2
-  # K <- diag( n_random)
-  # colnames(K) <- colnames(X_propto)
-  # colnames(K) <- colnames(X_propto)
-  K <- diag(p - val_num.eig)
-  colnames(K) <- paste0("p", (val_num.eig + 1) : p)
-  rownames(K) <- paste0("p", (val_num.eig + 1) : p)
+  K <- diag(p - 1 - val_num.eig)
+  colnames(K) <- paste0("p", (val_num.eig + 1) : (p - 1))
+  rownames(K) <- paste0("p", (val_num.eig + 1) : (p - 1))
   
   if (type == "p_mid") {
     # base_formula <- paste(
