@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p20_Both_Method1_2_S2_RE(p-1-k)"),
+  here("output", "Diversity_Poisson_p40_Both_Method3_S2_RE(p-1-k)"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -142,7 +142,7 @@ fig
 ############################################################
 ## Create results directory
 ############################################################
-path <- 'figures/p20/poisson/Method1'
+path <- 'figures/p40/poisson/Method3'
 dir.create(
   here(path),
   showWarnings = FALSE,
@@ -153,7 +153,7 @@ dir.create(
 ## Save figures
 ############################################################
 ggsave(
-  filename = here(path, "Diversity_Poisson_p20_Eigen2.png"),
+  filename = here(path, "Diversity_Poisson_p40_Eigen2.png"),
   plot = fig,
   width = 16,
   height = 4.5,
