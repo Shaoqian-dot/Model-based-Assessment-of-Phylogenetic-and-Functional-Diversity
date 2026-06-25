@@ -11,8 +11,7 @@ results/*.rds
 results/*.RData
 
 # Generated figures
-figures/*.png
-figures/*.pdf
+figures/
 
 # Large raw data
 data/*.rds

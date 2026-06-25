@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "Diversity_Poisson_p5_Both_Method3_S2_RE(p-1-k)"),
+  here("output", "Diversity_Binomial_p5_Both_Method3_S2_RE(p-1-k)"),
   pattern = "\\.rds$",
   full.names = TRUE
 )
@@ -74,7 +74,7 @@ facet_var <- "com"
 
 plot_data <- res_summary %>%
   filter(
-    family == "poisson",
+    family == "binomial",
     Eigen == 2,
     globalTest == FALSE,
     com %in% c(2, 3, 4, 5)
@@ -153,7 +153,7 @@ dir.create(
 ## Save figures
 ############################################################
 ggsave(
-  filename = here("figures", "Diversity_Poisson_p5_Both_Method3_S2_RE(p-1-k)_Eigen2.png"),
+  filename = here("figures", "Diversity_Binomial_p5_Both_Method3_S2_RE(p-1-k)_Eigen2.png"),
   plot = fig,
   width = 16,
   height = 4.5,
