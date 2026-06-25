@@ -40,11 +40,6 @@ source("R/rand.RaoQ.fun.R")
 
 set.seed(123)
 
-# p_vec  <- c(2, 4, 8, 16)
-# r      <- 80
-# sigma2 <- 1
-# c_val  <- 0.6
-
 ############################################################
 ### Load phylogenetic tree
 ############################################################
@@ -63,7 +58,7 @@ tree <- ape::read.tree(tree_file)
 ## Main simulation runner
 ###########################################################
 
-families <- c("poisson")
+families <- c("binomial")
 test <- c("Both") # Or LRT
 signals <- NA
 globalTest <- FALSE
@@ -128,8 +123,8 @@ res_all <- grid |>
       quantile = quantile,
       Corr = Corr,
       Eigen = Eigen,
-      Method = 'Method1',
-      Methods_para = 2
+      Method = 'Method3',
+      Methods_para = NA
     )
   })
 

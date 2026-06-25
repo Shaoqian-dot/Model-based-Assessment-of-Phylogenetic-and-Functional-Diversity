@@ -47,7 +47,7 @@ get_num.eig <- function (Methods, Methods_para, D){
       
     } else if (Methods[i] == 'Method3'){
       # Method3: Retain eigenvalues greater than the mean eigenvalue
-      num.eig[i] <- length(which(eig_vals > mean(eig_vals)))
+      num.eig[i] <- length(which(eig_vals > mean(eig_vals[1 : (m - 1)])))
       
     } else if (Methods[i] == 'Method4'){
       # Method4: Retain eigenvalues until max(PVE, cumulative index/m) exceeds 0.5

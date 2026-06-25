@@ -75,7 +75,7 @@ facet_var <- "com"
 plot_data <- res_summary %>%
   filter(
     family == "poisson",
-    Eigen == 1,
+    Eigen == 2,
     globalTest == FALSE,
     com %in% c(2, 3, 4, 5)
   ) %>%
@@ -153,7 +153,7 @@ dir.create(
 ## Save figures
 ############################################################
 ggsave(
-  filename = here("figures", "Diversity_Poisson_p5_Both_Method1_2_Similarity2.png"),
+  filename = here("figures", "Diversity_Poisson_p5_Both_Method1_2_S2_Eigen2.png"),
   plot = fig,
   width = 16,
   height = 4.5,

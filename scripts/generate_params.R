@@ -18,8 +18,8 @@ params <- expand.grid(
   quantile = 0.35,
   Corr = 1,
   Eigen = c(1, 2),
-  Method = "Method1",
-  Method_para = 2,
+  Method = "Method3",
+  Method_para = NA,
   stringsAsFactors = FALSE
 )
 
