@@ -3,6 +3,7 @@ library(here)
 
 # mat_p_sim <- cbind(rep(c(5, 10, 20, 40, 80), c(1, 2, 4, 10, 20)),
 #                    rep(c(100, 50, 25, 10, 5), c(1, 2, 4, 10, 20)))
+nsim = 100
 params <- expand.grid(
   family = c("poisson"),
   signal =  NA,
@@ -23,7 +24,7 @@ params <- expand.grid(
   stringsAsFactors = FALSE
 )
 
-params$seed <- 10000 + seq_len(nrow(params))
+params$seed <- 10000 + (seq_len(nrow(params)) - 1) * nsim
 
 write.csv(params,
           here("config", "params.csv"),

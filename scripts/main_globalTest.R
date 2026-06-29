@@ -65,6 +65,7 @@ globalTest <- FALSE
 alpha <- log(9/4)
 beta <- log(2)
 quantile <- 0.35
+nsim <- 2
 
 mat_p <- matrix(rep(c(5), c(1)), ncol = 1)
 colnames(mat_p) <- c('p')
@@ -98,7 +99,8 @@ grid <- expand.grid(
 # mat_p_sim_expand <- do.call(rbind, mat_p_sim_expand)
 # grid <- cbind(grid, mat_p_sim_expand)
 
-grid$seed <- 10000 + seq_len(nrow(grid))
+
+grid$seed <- 10000 + (seq_len(nrow(grid)) - 1) * nsim
 grid$row_id <- NULL
 
 res_all <- grid |>
@@ -106,6 +108,7 @@ res_all <- grid |>
                     seed, Swap, test, q, alpha, beta, quantile, Corr, Eigen){
     
     run_simulation(
+      nsim = nsim,
       signal_type = signal,
       family_type = family,
       globalTest = globalTest,
