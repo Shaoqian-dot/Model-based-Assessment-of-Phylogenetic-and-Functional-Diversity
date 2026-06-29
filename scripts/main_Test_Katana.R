@@ -133,6 +133,7 @@ Methods_para<- as.numeric(args[16])
 seed        <- as.numeric(args[17])
 
 q <- 5
+nsim <- 100
 
 
 ############################################################
@@ -185,6 +186,7 @@ tree <- ape::read.tree(tree_file)
 cat("Running simulation...\n\n")
 
 res <- run_simulation(
+  nsim <- nsim,
   family_type = family,
   signal_type = signal,
   r = r,
