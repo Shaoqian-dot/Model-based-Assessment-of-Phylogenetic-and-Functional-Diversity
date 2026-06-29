@@ -6,7 +6,7 @@ library(here)
 params <- expand.grid(
   family = c("poisson"),
   signal =  NA,
-  p = rep(c(80), c(100)),
+  p = rep(c(5), c(1000)),
   r = c(4, 8, 16, 32, 64),
   c_val =  NA_real_,
   sigma2 = NA,
