@@ -47,7 +47,7 @@ fit_model <- function(type, matrix_type, rr,
   yX_tmp <- cbind(yX, Lsp)
   
   p_vars_1 <- paste0("p", 1:val_num.eig)
-  p_vars_2 <- paste0("p", (val_num.eig + 1) : (p - 1))
+  p_vars_2 <- paste0("p", (val_num.eig + 1) : p)
   fixed_part_1 <- paste(p_vars_1, collapse = " + ")
   fixed_part_2 <- paste(p_vars_2, collapse = " + ")
   
@@ -107,9 +107,9 @@ fit_model <- function(type, matrix_type, rr,
 
   yX_tmp <- cbind(yX, Lsp)
 
-  K <- diag(p - 1 - val_num.eig)
-  colnames(K) <- paste0("p", (val_num.eig + 1) : (p - 1))
-  rownames(K) <- paste0("p", (val_num.eig + 1) : (p - 1))
+  K <- diag(p - val_num.eig)
+  colnames(K) <- paste0("p", (val_num.eig + 1) : p)
+  # rownames(K) <- paste0("p", (val_num.eig + 1) : (p - 1))
   
   if (type == "p_mid") {
     # base_formula <- paste(

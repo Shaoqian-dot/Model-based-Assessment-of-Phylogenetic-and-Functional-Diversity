@@ -1,6 +1,6 @@
 library(glmmTMB)
 
-set.seed(123)
+#set.seed(123)
 
 # -----------------------------
 # 1. 生成模拟数据
@@ -69,6 +69,7 @@ DM <- matrix(c(0, 1, 2,
                1, 0, 2,
                2, 2, 0), 3, 3)
 SM <- 1 - DM/2
+
 J <- diag(c(1, 1, 1)) - 1/3 * matrix(1, 3, 3)
 SM_J <- J %*% SM %*% J
 V_J <- eigen(SM_J)$vectors
@@ -78,21 +79,49 @@ contrasts(dat$sp) = V_J[, c(1, 2)]
 # Sum-to-zero contrast
 contrasts(dat$sp) = contr.sum(3)
 
+p <- 3
+val_num.eig <- 1
+Sp <- model.matrix(~0 + sp, data = dat)
+Lsp <- Sp %*% V_J
+colnames(Lsp) <- paste0("p", 1:3)
+
+yX_tmp <- cbind(dat, Lsp)
+
+K <- diag(p - val_num.eig)
+colnames(K) <- paste0("p", (val_num.eig + 1) : p)
+rownames(K) <- paste0("p", (val_num.eig + 1) : p)
+
 # -----------------------------
 # 2. 拟合 glmmTMB 模型
 # -------------------- ---------
-fit <- glmmTMB(
-  y ~ sp + tmp + tmp : sp,
-  data = dat,
+# fit <- glmmTMB(
+#   y ~ sp + com : tmp,
+#   data = dat,
+#   family = gaussian()
+# )
+# summary(fit)
+
+fit_com0 <- glmmTMB(
+  y ~ com * p1 + diag(0 + p2 | com),
+  data = yX_tmp,
   family = gaussian()
 )
-summary(fit)
+summary(fit_com0)
+
+fit_com <- glmmTMB(
+  y ~ com * p1 + propto(0 + p2 + p3 | com, K1),
+  data = yX_tmp,
+  family = gaussian()
+)
+
+summary(fit_com)
 
 fit <- glmmTMB(
-  y ~ sp + com : sp,
-  data = dat,
+  y ~ p1 + com : p1 + propto(0 + p2 + p3 | com, K1),
+  data = yX_tmp,
   family = gaussian()
 )
+
 summary(fit)
 
 fit <- glmmTMB(
