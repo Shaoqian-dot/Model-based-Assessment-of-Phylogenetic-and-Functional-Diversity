@@ -362,8 +362,6 @@ quantile <- 0.35
 
 Corr <- 1
 
-
-
 axis_method <- "Both"
 
 ############################################################
@@ -432,7 +430,7 @@ res <- run_simulation(
 ## Save results
 ############################################################
 
-run_name <- "Diversity_Poisson_p5_Both_Method3_S2_RE(p-k)_trial"
+run_name <- "Diversity_Pois_p_r_TestBoth_MethodBoth_S2_RE(p-k)_trial"
 
 out_dir <- here("output", run_name)
 
