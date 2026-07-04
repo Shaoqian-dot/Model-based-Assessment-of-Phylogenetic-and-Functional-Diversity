@@ -128,7 +128,7 @@ fit_model <- function(type, matrix_type, rr,
       }
       
       rhs_terms <- c(
-        "com",
+        #"com",
         paste0("(", fixed_part_1, ")"),
         interaction_terms,
         paste0("propto(0 + ", fixed_part_2, " | com, K)")
@@ -141,12 +141,12 @@ fit_model <- function(type, matrix_type, rr,
       
       } else {
       base_formula <- paste(
-        "y ~ com * (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
+        "y ~ (", fixed_part_1, ") + com : (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
       )
+      # base_formula <- paste(
+      #   "y ~ com * (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
+      # )
     }
-    # base_formula <- paste(
-    #   "y ~ com * (", fixed_part_1, ") + diag(", fixed_part_2, "|com)"
-    # )
     if (rr) {
       base_formula <- paste(
         base_formula,

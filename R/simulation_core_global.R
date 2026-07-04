@@ -7,10 +7,9 @@ fit_models <- function(dat,
                        S_J,
                        p,
                        q,
-                       Method,
-                       Methods_para){
+                       axis_method = c('Method1', 'Method2', 'Both')){
   # Likelihood Ratio Test
-  get_lrt_row <- function(j){
+  get_lrt_row <- function(j, fit_glmm_no_rr, fit_glmm_rr, val_num.eig){
     
     com_left <- setdiff(2:q, j)
     
@@ -63,13 +62,13 @@ fit_models <- function(dat,
   }
   
   # Wald Test
-  get_wald_row <- function(j){
+  get_wald_row <- function(j, fit_glmm_no_rr, fit_glmm_rr, val_num.eig){
     
     label <- paste0(
-      "com",
-      j,
-      ":p",
-      seq_len(val_num.eig)
+      "p",
+      seq_len(val_num.eig),
+      ":com",
+      j
     )
     
     chi_square_no_rr <- getChisquare_fixed(
@@ -163,55 +162,144 @@ fit_models <- function(dat,
       glmm_no_rr = get_lrt_p_safe(fit_glmm_no_rr, fit_glmm_no_rr_null),
       glmm_rr    = get_lrt_p_safe(fit_glmm_rr, fit_glmm_rr_null)
     ))
-  } else {
+  } else if (globalTest == FALSE) {
+    
+    axis_method_tbl <- data.frame(
+      axis_method = c("Method1", "Method3"),
+      Methods_para = c(2, NA)
+    )
+    
+    if (axis_method == "Both") {
+      axis_method_tbl <- axis_method_tbl
+    } else {
+      axis_method_tbl <- subset(axis_method_tbl, axis_method == axis_method)
+    }
+    
     eig <- spectral_decomp(VC_phy_func = S_J)
     V_J <- eig$P # eigenvectors of the new similarity matrix
     D_J <- eig$D # eigenvalues of the new similarity matrix
-    val_num.eig <- get_num.eig(Methods = Method, Methods_para = Methods_para, D = D_J)
-    fit_glmm_no_rr <<- try(
-      fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE,
-                                 yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
-                                 Distribution = fam, null = FALSE, p = p),
-      silent = TRUE
-    )
     
-    fit_glmm_rr <- try(
-      fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
-                yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
-                Distribution = fam, null = FALSE, p = p),
-      silent = TRUE
-    )
-    
-    res_list <- list()
-    
-    if ("LRT" %in% test) {
+    res_all <- pmap(axis_method_tbl, function(axis_method, Methods_para) {
       
-      res_list$LRT <- do.call(
-        rbind,
-        lapply(2:q, get_lrt_row)
+      val_num.eig <- get_num.eig(
+        Methods = axis_method,
+        Methods_para = Methods_para,
+        D = D_J
       )
       
-    }
-    
-    if ("Wald" %in% test) {
-      
-      res_list$Wald <- do.call(
-        rbind,
-        lapply(2:q, get_wald_row)
+      fit_glmm_no_rr <- try(
+        fit_model(
+          type = "p_mid",
+          matrix_type = "P_J",
+          rr = FALSE,
+          yX = dat_long,
+          P_J = V_J,
+          val_num.eig = val_num.eig,
+          Distribution = fam,
+          null = FALSE,
+          p = p
+        ),
+        silent = TRUE
       )
       
-    }
-    res <- bind_rows(
-      lapply(
-        names(res_list),
-        function(x) {
+      fit_glmm_rr <- try(
+        fit_model(
+          type = "p_mid",
+          matrix_type = "P_J",
+          rr = TRUE,
+          yX = dat_long,
+          P_J = V_J,
+          val_num.eig = val_num.eig,
+          Distribution = fam,
+          null = FALSE,
+          p = p
+        ),
+        silent = TRUE
+      )
+      
+      res_list <- list()
+      
+      if ("LRT" %in% test) {
+        res_list$LRT <- do.call(
+          rbind,
+          lapply(2:q, 
+                 get_lrt_row,
+                 val_num.eig = val_num.eig,
+                 fit_glmm_no_rr = fit_glmm_no_rr,
+                 fit_glmm_rr = fit_glmm_rr)
+        )
+      }
+      
+      if ("Wald" %in% test) {
+        res_list$Wald <- do.call(
+          rbind,
+          lapply(2:q, 
+                 get_wald_row,
+                 val_num.eig = val_num.eig,
+                 fit_glmm_no_rr = fit_glmm_no_rr,
+                 fit_glmm_rr = fit_glmm_rr)
+        )
+      }
+      
+      bind_rows(
+        lapply(names(res_list), function(x) {
           cbind(
+            axis_method = axis_method,
             test = x,
             res_list[[x]]
           )
-        }
+        })
       )
-    )
+      
+    })
+    
+    res <- bind_rows(res_all)
+    
+    # val_num.eig <- get_num.eig(Methods = Method, Methods_para = Methods_para, D = D_J)
+    # fit_glmm_no_rr <- try(
+    #   fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE,
+    #                              yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
+    #                              Distribution = fam, null = FALSE, p = p),
+    #   silent = TRUE
+    # )
+    # 
+    # fit_glmm_rr <- try(
+    #   fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
+    #             yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
+    #             Distribution = fam, null = FALSE, p = p),
+    #   silent = TRUE
+    # )
+    # 
+    # res_list <- list()
+    # 
+    # if ("LRT" %in% test) {
+    #   
+    #   res_list$LRT <- do.call(
+    #     rbind,
+    #     lapply(2:q, get_lrt_row)
+    #   )
+    #   
+    # }
+    # 
+    # if ("Wald" %in% test) {
+    #   
+    #   res_list$Wald <- do.call(
+    #     rbind,
+    #     lapply(2:q, get_wald_row)
+    #   )
+    #   
+    # }
+    # res <- bind_rows(
+    #   lapply(
+    #     names(res_list),
+    #     function(x) {
+    #       cbind(
+    #         test = x,
+    #         res_list[[x]]
+    #       )
+    #     }
+    #   )
+    # )
     
     return(res)
     }

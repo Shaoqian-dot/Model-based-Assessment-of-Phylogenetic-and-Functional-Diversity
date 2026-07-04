@@ -142,6 +142,172 @@
 #   return(res)
 # }
 
+# run_simulation <- function(
+#     signal_type,
+#     family_type,
+#     globalTest,
+#     test,
+#     Swap,
+#     p,
+#     q,
+#     r,
+#     c_val,
+#     sigma2,
+#     seed,
+#     nsim,
+#     tree,
+#     alpha,
+#     beta,
+#     quantile,
+#     Corr,
+#     Eigen,
+#     axis_method
+# ){
+#   res <- purrr::map_dfr(seq_len(nsim), function(sim){
+#     
+#     seed_i <- seed + sim - 1
+#     set.seed(seed_i)
+#     
+#     DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
+#     VC_phy_func <- 1 - DM_phy_func / max(DM_phy_func)
+#     
+#     I_p <- diag(p)
+#     J <- I_p - 1 / p * matrix(1, p, p)
+#     S_J <- t(J) %*% VC_phy_func %*% J
+#     
+#     eig <- spectral_decomp(VC_phy_func = S_J)
+#     V_J <- eig$P
+#     
+#     cat(
+#       "Running:",
+#       signal_type,
+#       "| family =", family_type,
+#       "| p =", p,
+#       "| sim =", sim,
+#       "\n"
+#     )
+#     
+#     if (Swap) {
+#       
+#       NOPS <- switch(
+#         as.character(p),
+#         "5" = 1,
+#         "10" = 2,
+#         "20" = 4,
+#         "40" = 8,
+#         "80" = 16,
+#         "160" = 32,
+#         stop("Unknown p")
+#       )
+#       
+#       dat <- getData(
+#         DM_phy_func = DM_phy_func,
+#         NOPS = NOPS,
+#         q = q,
+#         alpha = alpha,
+#         beta = beta,
+#         r = r,
+#         quantile = quantile,
+#         Corr = Corr,
+#         P = V_J[, 1:(p - 1)],
+#         Eigen = Eigen,
+#         Distribution = family_type,
+#         p = p
+#       )
+#       
+#       dat_long <- dat$yX
+#       dat_wide <- dat$abundance
+#       
+#     } else {
+#       
+#       dat <- generate_data(
+#         p = p,
+#         r = r,
+#         signal = signal_type,
+#         family = family_type,
+#         c_val = c_val,
+#         sigma2 = sigma2,
+#         tree = tree,
+#         V = V_J
+#       )
+#       
+#       dat_long <- dat$long
+#       dat_wide <- dat$wide[, -1]
+#       
+#     }
+#     
+#     model_res <- fit_models(
+#       dat = dat_long,
+#       family = family_type,
+#       globalTest = globalTest,
+#       tree = tree,
+#       S_J = S_J,
+#       p = p,
+#       q = q,
+#       test = test,
+#       Method = axis_method
+#     )
+#     
+#     model_res <- model_res %>%
+#       tidyr::pivot_longer(
+#         cols = -c(axis_method, com, test),
+#         names_to = "model",
+#         values_to = "p_values"
+#       ) %>%
+#       dplyr::mutate(method = "model_based")
+#     
+#     rao <- getRaosQ(
+#       abundance = dat_wide,
+#       DM_phy_func = DM_phy_func,
+#       use_randomization = 0,
+#       q = q
+#     )
+#     
+#     rao_rand <- getRaosQ(
+#       abundance = dat_wide,
+#       DM_phy_func = DM_phy_func,
+#       use_randomization = 1,
+#       q = q
+#     )
+#     
+#     rao_res <- dplyr::bind_rows(
+#       tibble::tibble(
+#         com = 2:q,
+#         model = "RaosQ",
+#         p_values = rao
+#       ),
+#       tibble::tibble(
+#         com = 2:q,
+#         model = "Randomized RaosQ",
+#         p_values = rao_rand
+#       )
+#     ) %>%
+#       dplyr::mutate(method = "raoQ")
+#     
+#     tmp_res <- dplyr::bind_rows(
+#       model_res,
+#       rao_res
+#     )
+#     
+#     tmp_res %>%
+#       dplyr::mutate(
+#         seed = seed_i,
+#         signal = signal_type,
+#         family = family_type,
+#         p = p,
+#         r = r,
+#         c_val = c_val,
+#         globalTest = globalTest,
+#         Eigen = Eigen,
+#         .before = 1
+#       )
+#     
+#   })
+#   
+#   return(res)
+# }
+
+
 run_simulation <- function(
     signal_type,
     family_type,
@@ -154,157 +320,168 @@ run_simulation <- function(
     c_val,
     sigma2,
     seed,
-    nsim,
     tree,
     alpha,
     beta,
     quantile,
     Corr,
     Eigen,
-    Method,
-    Methods_para
+    axis_method
 ){
-  res <- purrr::map_dfr(seq_len(nsim), function(sim){
-    
-    seed_i <- seed + sim - 1
-    set.seed(seed_i)
-    
-    DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
-    VC_phy_func <- 1 - DM_phy_func / max(DM_phy_func)
-    
-    I_p <- diag(p)
-    J <- I_p - 1 / p * matrix(1, p, p)
-    S_J <- t(J) %*% VC_phy_func %*% J
-    
-    eig <- spectral_decomp(VC_phy_func = S_J)
-    V_J <- eig$P
-    
-    cat(
-      "Running:",
-      signal_type,
-      "| family =", family_type,
-      "| p =", p,
-      "| sim =", sim,
-      "\n"
+  
+  grid <- tidyr::expand_grid(
+    p = p,
+    r = r,
+    family_type = family_type,
+    Eigen = Eigen
+  ) |>
+    dplyr::mutate(
+      sim = dplyr::row_number(),
+      seed_i = seed + sim - 1
     )
-    
-    if (Swap) {
+  
+  res <- purrr::pmap_dfr(
+    grid,
+    function(p, r, family_type, Eigen, sim, seed_i){
       
-      NOPS <- switch(
-        as.character(p),
-        "5" = 1,
-        "10" = 2,
-        "20" = 4,
-        "40" = 8,
-        "80" = 16,
-        "160" = 32,
-        stop("Unknown p")
+      set.seed(seed_i)
+      
+      DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
+      VC_phy_func <- 1 - DM_phy_func / max(DM_phy_func)
+      
+      I_p <- diag(p)
+      J <- I_p - 1 / p * matrix(1, p, p)
+      S_J <- t(J) %*% VC_phy_func %*% J
+      
+      eig <- spectral_decomp(VC_phy_func = S_J)
+      V_J <- eig$P
+      
+      cat(
+        "Running:",
+        signal_type,
+        "| family =", family_type,
+        "| p =", p,
+        "| r =", r,
+        "| Eigen =", Eigen,
+        "\n"
       )
       
-      dat <- getData(
-        DM_phy_func = DM_phy_func,
-        NOPS = NOPS,
-        q = q,
-        alpha = alpha,
-        beta = beta,
-        r = r,
-        quantile = quantile,
-        Corr = Corr,
-        P = V_J[, 1:(p - 1)],
-        Eigen = Eigen,
-        Distribution = family_type,
-        p = p
-      )
+      if (Swap) {
+        
+        NOPS <- switch(
+          as.character(p),
+          "5" = 1,
+          "10" = 2,
+          "20" = 4,
+          "40" = 8,
+          "80" = 16,
+          "160" = 32,
+          stop("Unknown p")
+        )
+        
+        dat <- getData(
+          DM_phy_func = DM_phy_func,
+          NOPS = NOPS,
+          q = q,
+          alpha = alpha,
+          beta = beta,
+          r = r,
+          quantile = quantile,
+          Corr = Corr,
+          P = V_J[, 1:(p - 1)],
+          Eigen = Eigen,
+          Distribution = family_type,
+          p = p
+        )
+        
+        dat_long <- dat$yX
+        dat_wide <- dat$abundance
+        
+      } else {
+        
+        dat <- generate_data(
+          p = p,
+          r = r,
+          signal = signal_type,
+          family = family_type,
+          c_val = c_val,
+          sigma2 = sigma2,
+          tree = tree,
+          V = V_J
+        )
+        
+        dat_long <- dat$long
+        dat_wide <- dat$wide[, -1]
+        
+      }
       
-      dat_long <- dat$yX
-      dat_wide <- dat$abundance
-      
-    } else {
-      
-      dat <- generate_data(
-        p = p,
-        r = r,
-        signal = signal_type,
+      model_res <- fit_models(
+        dat = dat_long,
         family = family_type,
-        c_val = c_val,
-        sigma2 = sigma2,
+        globalTest = globalTest,
         tree = tree,
-        V = V_J
+        S_J = S_J,
+        p = p,
+        q = q,
+        test = test,
+        axis_method = axis_method
       )
       
-      dat_long <- dat$long
-      dat_wide <- dat$wide[, -1]
+      model_res <- model_res %>%
+        tidyr::pivot_longer(
+          cols = -c(axis_method, com, test),
+          names_to = "model",
+          values_to = "p_values"
+        ) %>%
+        dplyr::mutate(method = "model_based")
+      
+      rao <- getRaosQ(
+        abundance = dat_wide,
+        DM_phy_func = DM_phy_func,
+        use_randomization = 0,
+        q = q
+      )
+      
+      rao_rand <- getRaosQ(
+        abundance = dat_wide,
+        DM_phy_func = DM_phy_func,
+        use_randomization = 1,
+        q = q
+      )
+      
+      rao_res <- dplyr::bind_rows(
+        tibble::tibble(
+          com = 2:q,
+          model = "RaosQ",
+          p_values = rao
+        ),
+        tibble::tibble(
+          com = 2:q,
+          model = "Randomized RaosQ",
+          p_values = rao_rand
+        )
+      ) %>%
+        dplyr::mutate(method = "raoQ")
+      
+      dplyr::bind_rows(
+        model_res,
+        rao_res
+      ) %>%
+        dplyr::mutate(
+          seed = seed_i,
+          signal = signal_type,
+          family = family_type,
+          p = p,
+          r = r,
+          c_val = c_val,
+          globalTest = globalTest,
+          Eigen = Eigen,
+          .before = 1
+        )
       
     }
-    
-    model_res <- fit_models(
-      dat = dat_long,
-      family = family_type,
-      globalTest = globalTest,
-      tree = tree,
-      S_J = S_J,
-      p = p,
-      q = q,
-      test = test,
-      Method = Method,
-      Methods_para = Methods_para
-    )
-    
-    model_res <- model_res %>%
-      tidyr::pivot_longer(
-        cols = -c(com, test),
-        names_to = "model",
-        values_to = "p_values"
-      ) %>%
-      dplyr::mutate(method = "model_based")
-    
-    rao <- getRaosQ(
-      abundance = dat_wide,
-      DM_phy_func = DM_phy_func,
-      use_randomization = 0,
-      q = q
-    )
-    
-    rao_rand <- getRaosQ(
-      abundance = dat_wide,
-      DM_phy_func = DM_phy_func,
-      use_randomization = 1,
-      q = q
-    )
-    
-    rao_res <- dplyr::bind_rows(
-      tibble::tibble(
-        com = 2:q,
-        model = "RaosQ",
-        p_values = rao
-      ),
-      tibble::tibble(
-        com = 2:q,
-        model = "Randomized RaosQ",
-        p_values = rao_rand
-      )
-    ) %>%
-      dplyr::mutate(method = "raoQ")
-    
-    tmp_res <- dplyr::bind_rows(
-      model_res,
-      rao_res
-    )
-    
-    tmp_res %>%
-      dplyr::mutate(
-        seed = seed_i,
-        signal = signal_type,
-        family = family_type,
-        p = p,
-        r = r,
-        c_val = c_val,
-        globalTest = globalTest,
-        Eigen = Eigen,
-        .before = 1
-      )
-    
-  })
+  )
   
-  return(res)
+  res
+  
 }

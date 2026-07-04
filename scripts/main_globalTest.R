@@ -58,59 +58,41 @@ tree <- ape::read.tree(tree_file)
 ## Main simulation runner
 ###########################################################
 
-families <- c("binomial")
-test <- c("Both") # Or LRT
-signals <- NA
+
+
+axis_method <- 'Both'
+signal <- NA
+families <- c("binomial", "poisson")
 globalTest <- FALSE
+test <- c("Both") # Or LRT
+Swap = TRUE
+p <- c(5)
+q <- 5
+r <- c(32, 64)
+c_val <- NA
+sigma2 <- NA
 alpha <- log(9/4)
 beta <- log(2)
 quantile <- 0.35
-nsim <- 2
+Corr <- 1
+Eigen <- 1
+axis_method <- 'Both'
 
-mat_p <- matrix(rep(c(5), c(1)), ncol = 1)
-colnames(mat_p) <- c('p')
+nsim = 2
+step <- length(p) * length(r) * length(families) * length(Eigen)
 
-grid <- expand.grid(
-  # Common inputs
-  family = families,
-  globalTest = globalTest,
-  p = rep(c(5), c(2)),
-  #row_id = seq_len(nrow(mat_p_sim)),
-  r = 80,
-  Swap = TRUE,
-  
-  # Swap DGM 
-  test = test,
-  q = 5,
-  alpha = alpha,
-  beta = beta,
-  quantile = quantile,
-  Corr = 1,
-  Eigen = 1,
-  
-  # nonSwap DGM
-  sigma2 = NA,
-  signal = signals,
-  c_val = NA,
-  
-  stringsAsFactors = FALSE
-)
-# mat_p_sim_expand <- lapply(grid$row_id, function(i) mat_p_sim[i, ])
-# mat_p_sim_expand <- do.call(rbind, mat_p_sim_expand)
-# grid <- cbind(grid, mat_p_sim_expand)
-
-
-grid$seed <- 10000 + (seq_len(nrow(grid)) - 1) * nsim
-grid$row_id <- NULL
-
-res_all <- grid |>
-  pmap_dfr(function(family, signal, globalTest, p, r, c_val, sigma2,
-                    seed, Swap, test, q, alpha, beta, quantile, Corr, Eigen){
+seed <- data.frame(
+  seed = seq(
+  from = 1000,
+  by = step,
+  length.out = nsim
+))
+res_all <- seed |>
+  pmap_dfr(function(seed){
     
     run_simulation(
-      nsim = nsim,
       signal_type = signal,
-      family_type = family,
+      family_type = families,
       globalTest = globalTest,
       test = test,
       Swap = Swap,
@@ -126,8 +108,7 @@ res_all <- grid |>
       quantile = quantile,
       Corr = Corr,
       Eigen = Eigen,
-      Method = 'Method3',
-      Methods_para = NA
+      axis_method = axis_method 
     )
   })
 
@@ -142,6 +123,7 @@ res_mean <- res_all %>%
            test,
            Eigen,
            com,
+           axis_method,
            method) %>%
   summarise(
     power = mean(p_values < 0.05, na.rm = TRUE),
