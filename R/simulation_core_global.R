@@ -179,80 +179,6 @@ fit_models <- function(dat,
     V_J <- eig$P # eigenvectors of the new similarity matrix
     D_J <- eig$D # eigenvalues of the new similarity matrix
     
-    # res_all <- pmap(axis_method_tbl, function(axis_method, Methods_para) {
-    #   
-    #   val_num.eig <- get_num.eig(
-    #     Methods = axis_method,
-    #     Methods_para = Methods_para,
-    #     D = D_J
-    #   )
-    #   
-    #   fit_glmm_no_rr <- try(
-    #     fit_model(
-    #       type = "p_mid",
-    #       matrix_type = "P_J",
-    #       rr = FALSE,
-    #       yX = dat_long,
-    #       P_J = V_J,
-    #       val_num.eig = val_num.eig,
-    #       Distribution = fam,
-    #       null = FALSE,
-    #       p = p
-    #     ),
-    #     silent = TRUE
-    #   )
-    #   
-    #   fit_glmm_rr <- try(
-    #     fit_model(
-    #       type = "p_mid",
-    #       matrix_type = "P_J",
-    #       rr = TRUE,
-    #       yX = dat_long,
-    #       P_J = V_J,
-    #       val_num.eig = val_num.eig,
-    #       Distribution = fam,
-    #       null = FALSE,
-    #       p = p
-    #     ),
-    #     silent = TRUE
-    #   )
-    #   
-    #   res_list <- list()
-    #   
-    #   if ("LRT" %in% test) {
-    #     res_list$LRT <- do.call(
-    #       rbind,
-    #       lapply(2:q, 
-    #              get_lrt_row,
-    #              val_num.eig = val_num.eig,
-    #              fit_glmm_no_rr = fit_glmm_no_rr,
-    #              fit_glmm_rr = fit_glmm_rr)
-    #     )
-    #   }
-    #   
-    #   if ("Wald" %in% test) {
-    #     res_list$Wald <- do.call(
-    #       rbind,
-    #       lapply(2:q, 
-    #              get_wald_row,
-    #              val_num.eig = val_num.eig,
-    #              fit_glmm_no_rr = fit_glmm_no_rr,
-    #              fit_glmm_rr = fit_glmm_rr)
-    #     )
-    #   }
-    #   
-    #   bind_rows(s
-    #     lapply(names(res_list), function(x) {
-    #       cbind(
-    #         axis_method = axis_method,
-    #         test = x,
-    #         res_list[[x]]
-    #       )
-    #     })
-    #   )
-    #   
-    # })
-    
     res <- purrr::pmap_dfr(
       grid,
       function(p, r, family_type, Eigen, sim, seed_i) {
@@ -437,52 +363,6 @@ fit_models <- function(dat,
     )
     
     res <- bind_rows(res_all)
-    
-    # val_num.eig <- get_num.eig(Methods = Method, Methods_para = Methods_para, D = D_J)
-    # fit_glmm_no_rr <- try(
-    #   fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE,
-    #                              yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
-    #                              Distribution = fam, null = FALSE, p = p),
-    #   silent = TRUE
-    # )
-    # 
-    # fit_glmm_rr <- try(
-    #   fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
-    #             yX = dat_long, P_J = V_J, val_num.eig = val_num.eig, 
-    #             Distribution = fam, null = FALSE, p = p),
-    #   silent = TRUE
-    # )
-    # 
-    # res_list <- list()
-    # 
-    # if ("LRT" %in% test) {
-    #   
-    #   res_list$LRT <- do.call(
-    #     rbind,
-    #     lapply(2:q, get_lrt_row)
-    #   )
-    #   
-    # }
-    # 
-    # if ("Wald" %in% test) {
-    #   
-    #   res_list$Wald <- do.call(
-    #     rbind,
-    #     lapply(2:q, get_wald_row)
-    #   )
-    #   
-    # }
-    # res <- bind_rows(
-    #   lapply(
-    #     names(res_list),
-    #     function(x) {
-    #       cbind(
-    #         test = x,
-    #         res_list[[x]]
-    #       )
-    #     }
-    #   )
-    # )
     
     return(res)
     }
