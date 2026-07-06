@@ -241,7 +241,7 @@ fit_models <- function(dat,
     #     )
     #   }
     #   
-    #   bind_rows(
+    #   bind_rows(s
     #     lapply(names(res_list), function(x) {
     #       cbind(
     #         axis_method = axis_method,
