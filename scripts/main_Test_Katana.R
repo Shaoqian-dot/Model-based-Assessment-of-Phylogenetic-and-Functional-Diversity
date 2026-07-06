@@ -177,7 +177,7 @@ res <- run_simulation(
 ## Save results
 ############################################################
 
-run_name <- "Diversity_Pois_p_r_TestBoth_MethodBoth_S2_RE(p-k)_trial"
+run_name <- "Diversity_Pois_p_r_TestBoth_MethodBoth_Eigen1_trial"
 
 out_dir <- here("output", run_name)
 
