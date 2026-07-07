@@ -58,17 +58,15 @@ tree <- ape::read.tree(tree_file)
 ## Main simulation runner
 ###########################################################
 
-
-
 axis_method <- 'Both'
 signal <- NA
-families <- c("binomial", "poisson")
+families <- c("poisson")
 globalTest <- FALSE
 test <- c("Both") # Or LRT
 Swap = TRUE
 p <- c(5)
 q <- 5
-r <- c(32, 64)
+r <- c(64)
 c_val <- NA
 sigma2 <- NA
 alpha <- log(9/4)
@@ -78,7 +76,7 @@ Corr <- 1
 Eigen <- 1
 axis_method <- 'Both'
 
-nsim = 2
+nsim = 2 # The number of simulations
 step <- length(p) * length(r) * length(families) * length(Eigen)
 
 seed <- data.frame(
