@@ -5,6 +5,7 @@
 output/
 results/
 logs/
+timing_logs/
 # Generated results
 
 results/*.rds
