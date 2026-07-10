@@ -32,7 +32,7 @@ fit_models <- function(dat,
       silent = TRUE
     )
     
-    fit_glmm_rr_null <- try(
+    fit_glmm_rr_null <<- try(
       fit_model(
         type = "p_mid",
         matrix_type = "P_J",
@@ -48,17 +48,39 @@ fit_models <- function(dat,
       silent = TRUE
     )
     
+    lrt_no_rr <- get_lrt_p_safe(
+      fit_glmm_no_rr$fit,
+      fit_glmm_no_rr_null$fit
+    )
+    
+    lrt_rr <- get_lrt_p_safe(
+      fit_glmm_rr$fit,
+      fit_glmm_rr_null$fit
+    )
+    
     data.frame(
       com = j,
-      glmm_no_rr = get_lrt_p_safe(
-        fit_glmm_no_rr,
-        fit_glmm_no_rr_null
-      ),
-      glmm_rr = get_lrt_p_safe(
-        fit_glmm_rr,
-        fit_glmm_rr_null
-      )
+      glmm_no_rr = lrt_no_rr$p_value,
+      glmm_no_rr_status = lrt_no_rr$status,
+      glmm_no_rr_warning_type = fit_glmm_no_rr$warning_type,
+      glmm_no_rr_null_warning_type = fit_glmm_no_rr_null$warning_type,
+      glmm_rr = lrt_rr$p_value,
+      glmm_rr_status = lrt_rr$status,
+      glmm_rr_warning_type = fit_glmm_rr$warning_type,
+      glmm_rr_null_warning_type = fit_glmm_rr_null$warning_type
     )
+    
+    # data.frame(
+    #   com = j,
+    #   glmm_no_rr = get_lrt_p_safe(
+    #     fit_glmm_no_rr,
+    #     fit_glmm_no_rr_null
+    #   ),
+    #   glmm_rr = get_lrt_p_safe(
+    #     fit_glmm_rr,
+    #     fit_glmm_rr_null
+    #   )
+    # )
   }
   
   # Wald Test
@@ -72,12 +94,12 @@ fit_models <- function(dat,
     )
     
     chi_square_no_rr <- getChisquare_fixed(
-      Model = fit_glmm_no_rr,
+      Model = fit_glmm_no_rr$fit,
       label = label
     )
     
     chi_square_rr <- getChisquare_fixed(
-      Model = fit_glmm_rr,
+      Model = fit_glmm_rr$fit,
       label = label
     )
     
@@ -88,11 +110,15 @@ fit_models <- function(dat,
         df = val_num.eig,
         lower.tail = FALSE
       ),
+      glmm_no_rr_status = 'Success',
+      glmm_no_rr_warning_type = fit_glmm_no_rr$warning_type,
       glmm_rr = pchisq(
         chi_square_rr,
         df = val_num.eig,
         lower.tail = FALSE
-      )
+      ),
+      glmm_rr_status = 'Success',
+      glmm_rr_warning_type = fit_glmm_rr$warning_type
     )
   }
   
@@ -202,7 +228,7 @@ fit_models <- function(dat,
         silent = TRUE
       )
       
-      fit_glmm_rr <- try(
+      fit_glmm_rr <<- try(
         fit_model(
           type = "p_mid",
           matrix_type = "P_J",

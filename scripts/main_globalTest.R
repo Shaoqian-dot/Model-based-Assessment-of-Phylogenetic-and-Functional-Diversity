@@ -76,7 +76,7 @@ Corr <- 1
 Eigen <- 1
 axis_method <- 'Both'
 
-nsim = 2 # The number of simulations
+nsim = 1 # The number of simulations
 step <- length(p) * length(r) * length(families) * length(Eigen)
 
 seed <- data.frame(

@@ -21,6 +21,31 @@ run_simulation <- function(
     Eigen,
     axis_method
 ){
+  save_checkpoint <- function(results,
+                              job_id,
+                              p,
+                              r,
+                              Eigen,
+                              family,
+                              path = "results") {
+    
+    save_path <- file.path(
+      path,
+      paste0("Eigen", Eigen, "_", family)
+    )
+    
+    if (!dir.exists(save_path)) {
+      dir.create(save_path, recursive = TRUE)
+    }
+    
+    saveRDS(
+      results,
+      file = file.path(
+        save_path,
+        paste0("job_", job_id, "_p_", p, "_r_", r, ".rds")
+      )
+    )
+  }
   
   grid <- tidyr::expand_grid(
     p = p,
@@ -128,13 +153,51 @@ run_simulation <- function(
           axis_method = axis_method
         )
 
+        # model_res <- model_res %>%
+        #   tidyr::pivot_longer(
+        #     cols = -c(axis_method, com, test),
+        #     names_to = "model",
+        #     values_to = "p_values"
+        #   )
+        # names(model_res)[names(model_res) %in% c("glmm_no_rr", "glmm_rr")] <-
+        #   c("glmm_no_rr_pvalue", "glmm_rr_pvalue")
+        # 
+        # model_res <- model_res %>%
+        #   tidyr::pivot_longer(
+        #     cols = c(
+        #       glmm_no_rr_pvalue,
+        #       glmm_no_rr_status,
+        #       glmm_rr_pvalue,
+        #       glmm_rr_status
+        #     ),
+        #     names_to = c("model", ".value"),
+        #     names_pattern = "(glmm_(?:no_rr|rr))_(pvalue|status)"
+        #   ) %>%
+        #   dplyr::mutate(method = "model_based")
+        
+        names(model_res)[names(model_res) %in% c("glmm_no_rr", "glmm_rr")] <-
+          c("glmm_no_rr_pvalue", "glmm_rr_pvalue")
         model_res <- model_res %>%
           tidyr::pivot_longer(
-            cols = -c(axis_method, com, test),
-            names_to = "model",
-            values_to = "p_values"
+            cols = c(
+              glmm_no_rr_pvalue,
+              glmm_no_rr_status,
+              glmm_no_rr_warning_type,
+              glmm_no_rr_null_warning_type,
+              glmm_rr_pvalue,
+              glmm_rr_status,
+              glmm_rr_warning_type,
+              glmm_rr_null_warning_type
+            ),
+            names_to = c("model", ".value"),
+            names_pattern = "(glmm_(?:no_rr|rr))_(pvalue|status|warning_type|null_warning_type)"
           ) %>%
-          dplyr::mutate(method = "model_based")
+          dplyr::rename(
+            alt_warning_type = warning_type
+          ) %>%
+          dplyr::mutate(
+            method = "model_based"
+          )
 
         rao <- getRaosQ(
           abundance = dat_wide,
@@ -150,16 +213,32 @@ run_simulation <- function(
           q = q
         )
 
+        # rao_res <- dplyr::bind_rows(
+        #   tibble::tibble(
+        #     com = 2:q,
+        #     model = "RaosQ",
+        #     pvalue = rao
+        #   ),
+        #   tibble::tibble(
+        #     com = 2:q,
+        #     model = "Randomized RaosQ",
+        #     pvalue = rao_rand
+        #   )
+        # ) %>%
+        #   dplyr::mutate(method = "raoQ")
+        
         rao_res <- dplyr::bind_rows(
           tibble::tibble(
             com = 2:q,
             model = "RaosQ",
-            p_values = rao
+            pvalue = rao,
+            status = "Success"
           ),
           tibble::tibble(
             com = 2:q,
             model = "Randomized RaosQ",
-            p_values = rao_rand
+            pvalue = rao_rand,
+            status = "Success"
           )
         ) %>%
           dplyr::mutate(method = "raoQ")
@@ -211,8 +290,15 @@ run_simulation <- function(
           timing["elapsed"] / 3600
         )
       )
-
-      result
+      save_checkpoint(
+        results = result,
+        job_id = seed,
+        p = p,
+        r = r,
+        Eigen = Eigen,
+        family = family_type
+      )
+      return(result)
     }
   )
   res
