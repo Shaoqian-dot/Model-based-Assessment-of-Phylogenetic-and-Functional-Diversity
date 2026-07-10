@@ -1,0 +1,14 @@
+#PBS -N rerun_failed
+#PBS -l mem=16gb
+#PBS -l walltime=11:59:59
+#PBS -J 1-28
+#PBS -o logs/
+#PBS -e logs/
+
+cd $PBS_O_WORKDIR
+
+job_id=$(sed -n "${PBS_ARRAY_INDEX}p" failed_jobs.txt)
+
+echo "Running original job ${job_id}"
+
+Rscript scripts/main_Test_Katana.R ${job_id}
