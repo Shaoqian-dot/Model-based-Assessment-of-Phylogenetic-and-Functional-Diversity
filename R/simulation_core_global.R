@@ -62,12 +62,16 @@ fit_models <- function(dat,
       com = j,
       glmm_no_rr = lrt_no_rr$p_value,
       glmm_no_rr_status = lrt_no_rr$status,
-      glmm_no_rr_warning_type = fit_glmm_no_rr$warning_type,
-      glmm_no_rr_null_warning_type = fit_glmm_no_rr_null$warning_type,
+      glmm_no_rr_warning_msgs = fit_glmm_no_rr$warning_msgs,
+      glmm_no_rr_null_warning_msgs = fit_glmm_no_rr_null$warning_msgs,
+      glmm_no_rr_convergence = fit_glmm_no_rr$convergence,
+      glmm_no_rr_pdHess = fit_glmm_no_rr$pdHess,
       glmm_rr = lrt_rr$p_value,
       glmm_rr_status = lrt_rr$status,
-      glmm_rr_warning_type = fit_glmm_rr$warning_type,
-      glmm_rr_null_warning_type = fit_glmm_rr_null$warning_type
+      glmm_rr_warning_msgs = fit_glmm_rr$warning_msgs,
+      glmm_rr_null_warning_msgs = fit_glmm_rr_null$warning_msgs,
+      glmm_rr_convergence = fit_glmm_rr$convergence,
+      glmm_rr_pdHess = fit_glmm_rr$pdHess
     )
     
     # data.frame(
@@ -111,14 +115,18 @@ fit_models <- function(dat,
         lower.tail = FALSE
       ),
       glmm_no_rr_status = 'Success',
-      glmm_no_rr_warning_type = fit_glmm_no_rr$warning_type,
+      glmm_no_rr_warning_msgs = fit_glmm_no_rr$warning_msgs,
+      glmm_no_rr_convergence = fit_glmm_no_rr$convergence,
+      glmm_no_rr_pdHess = fit_glmm_no_rr$pdHess,
       glmm_rr = pchisq(
         chi_square_rr,
         df = val_num.eig,
         lower.tail = FALSE
       ),
       glmm_rr_status = 'Success',
-      glmm_rr_warning_type = fit_glmm_rr$warning_type
+      glmm_rr_warning_msgs = fit_glmm_rr$warning_msgs,
+      glmm_rr_convergence = fit_glmm_rr$convergence,
+      glmm_rr_pdHess = fit_glmm_rr$pdHess
     )
   }
   

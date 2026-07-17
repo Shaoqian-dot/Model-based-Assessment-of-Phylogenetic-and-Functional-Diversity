@@ -182,32 +182,54 @@ fit_model <- function(type, matrix_type, rr,
     #   
     #   TRUE ~ "None"
     # )
-    warning_type <- dplyr::case_when(
-      length(warning_msgs) == 0 ~ "None",
-      
-      any(grepl("non-positive-definite Hessian", warning_msgs)) &
-        any(grepl("false convergence", warning_msgs)) ~ "both",
-      
-      any(grepl("non-positive-definite Hessian", warning_msgs)) ~
-        "non-positive-definite Hessian",
-      
-      any(grepl("false convergence", warning_msgs)) ~
-        "false convergence",
-      
-      TRUE ~ "Other"
-    )
+    warning_msgs <- unique(warning_msgs)
+    
+    warning_msgs <- if (length(warning_msgs) == 0) {
+      "None"
+    } else {
+      paste(warning_msgs, collapse = " | ")
+    }
+    
+    warning_msgs <- unique(warning_msgs)
+    
+    warning_msgs <- if (length(warning_msgs) == 0) {
+      "None"
+    } else {
+      paste(warning_msgs, collapse = " | ")
+    }
+    
+    # warning_type <- dplyr::case_when(
+    #   length(warning_msgs) == 0 ~ "None"
+    # )
+    # 
+    # warning_type <- dplyr::case_when(
+    #   length(warning_msgs) == 0 ~ "None",
+    #   
+    #   any(grepl("non-positive-definite Hessian", warning_msgs)) &
+    #     any(grepl("false convergence", warning_msgs)) ~ "both",
+    #   
+    #   any(grepl("non-positive-definite Hessian", warning_msgs)) ~
+    #     "non-positive-definite Hessian",
+    #   
+    #   any(grepl("false convergence", warning_msgs)) ~
+    #     "false convergence",
+    #   
+    #   TRUE ~ "Other"
+    # )
     # fit <- glmmTMB(
     #   form,
     #   family = Distribution,
     #   data = yX_tmp,
     #   REML=FALSE
     # )
+    convergence <- fit$fit$convergence
+    pdHess <- fit$sdr$pdHess
     return(
       list(
         fit = fit,
-        warning_type = warning_type
-        # convergence = convergence,
-        # pdHess = pdHess
+        warning_msgs = warning_msgs,
+        convergence = convergence,
+        pdHess = pdHess
       )
     )
   }

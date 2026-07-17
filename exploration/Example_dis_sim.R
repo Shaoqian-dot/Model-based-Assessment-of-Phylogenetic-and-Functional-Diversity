@@ -108,6 +108,19 @@ if(!file.exists(tree_file)){
 tree <- ape::read.tree(tree_file)
 
 D <- getPhyloMatrix(tree = tree, m = p)
+# Rao's Q
+rao <- c()
+for (i in 1 : 1000) {
+  abun_sp <- rpois(lambda = 0.5, n = p)
+  if (sum(abun_sp) == 0){
+    re_abun_sp <- rep(0, times = p)
+  } else {
+    re_abun_sp <- abun_sp / sum(abun_sp)
+  }
+  rao <- cbind(rao, 1/2 * re_abun_sp %*% D %*% re_abun_sp)
+}
+
+
 plot(subtree)
 
 #S <- 1 - D/(max(D) + 1)

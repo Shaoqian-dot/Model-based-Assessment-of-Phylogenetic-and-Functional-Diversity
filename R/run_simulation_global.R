@@ -175,25 +175,57 @@ run_simulation <- function(
         #   ) %>%
         #   dplyr::mutate(method = "model_based")
         
+        # names(model_res)[names(model_res) %in% c("glmm_no_rr", "glmm_rr")] <-
+        #   c("glmm_no_rr_pvalue", "glmm_rr_pvalue")
+        # model_res <- model_res %>%
+        #   tidyr::pivot_longer(
+        #     cols = c(
+        #       glmm_no_rr_pvalue,
+        #       glmm_no_rr_status,
+        #       glmm_no_rr_warning_mags,
+        #       glmm_no_rr_null_warning_msgs,
+        #       glmm_rr_pvalue,
+        #       glmm_rr_status,
+        #       glmm_rr_warning_msgs,
+        #       glmm_rr_null_warning_msgs
+        #     ),
+        #     names_to = c("model", ".value"),
+        #     names_pattern = "(glmm_(?:no_rr|rr))_(pvalue|status|warning_type|null_warning_type)"
+        #   ) %>%
+        #   dplyr::rename(
+        #     alt_warning_type = warning_type
+        #   ) %>%
+        #   dplyr::mutate(
+        #     method = "model_based"
+        #   )
+        
         names(model_res)[names(model_res) %in% c("glmm_no_rr", "glmm_rr")] <-
           c("glmm_no_rr_pvalue", "glmm_rr_pvalue")
+        
         model_res <- model_res %>%
           tidyr::pivot_longer(
             cols = c(
               glmm_no_rr_pvalue,
               glmm_no_rr_status,
-              glmm_no_rr_warning_type,
-              glmm_no_rr_null_warning_type,
+              glmm_no_rr_warning_msgs,
+              glmm_no_rr_null_warning_msgs,
+              glmm_no_rr_convergence,
+              glmm_no_rr_pdHess,
               glmm_rr_pvalue,
               glmm_rr_status,
-              glmm_rr_warning_type,
-              glmm_rr_null_warning_type
+              glmm_rr_warning_msgs,
+              glmm_rr_null_warning_msgs,
+              glmm_rr_convergence,
+              glmm_rr_pdHess
             ),
             names_to = c("model", ".value"),
-            names_pattern = "(glmm_(?:no_rr|rr))_(pvalue|status|warning_type|null_warning_type)"
+            names_pattern = "(glmm_(?:no_rr|rr))_(pvalue|status|warning_msgs|null_warning_msgs|convergence|pdHess)"
           ) %>%
           dplyr::rename(
-            alt_warning_type = warning_type
+            alt_warning_msgs = warning_msgs,
+            null_warning_msgs = null_warning_msgs,
+            alt_convergence = convergence,
+            alt_pdHess = pdHess
           ) %>%
           dplyr::mutate(
             method = "model_based"
