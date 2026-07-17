@@ -3,6 +3,7 @@
 #PBS -N my_simulations
 #PBS -l mem=16gb
 #PBS -l walltime=11:59:59
+#PBS -J 1-1000
 #PBS -o logs/
 #PBS -e logs/
 #PBS -j oe
