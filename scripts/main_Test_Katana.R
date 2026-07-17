@@ -177,7 +177,7 @@ res <- run_simulation(
 ## Save results
 ############################################################
 
-run_name <- "PhyD_Pois_p5102040_r_TestBoth_MethodBoth_Eigen2"
+run_name <- "PhyD_Pois_p5102040_r_TestBoth_MethodBoth_Eigen2_Failed41"
 
 out_dir <- here("output", run_name)
 
