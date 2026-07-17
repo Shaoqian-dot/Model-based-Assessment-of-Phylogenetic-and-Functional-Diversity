@@ -83,7 +83,7 @@ seed <- as.numeric(args[1])
 
 family <- c("poisson")
 
-p <- c(5, 10, 20, 40, 80)
+p <- c(80)
 
 r <- c(4, 8, 16, 32, 64)
 
@@ -177,7 +177,7 @@ res <- run_simulation(
 ## Save results
 ############################################################
 
-run_name <- "Diversity_Pois_p_r_TestBoth_MethodBoth_Eigen1_trial"
+run_name <- "Diversity_Pois_p80_r_TestBoth_MethodBoth_Eigen1_failed28"
 
 out_dir <- here("output", run_name)
 
