@@ -16,7 +16,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "PhyD_Pois_p_r_TestBoth_MethodBoth_Eigen1"),
+  here("output", "PhyD_Pois_p510204080_r_TestBoth_MethodBoth_Eigen2"),
   pattern = "\\.rds$",
   recursive = TRUE,
   full.names = TRUE
@@ -85,8 +85,9 @@ res_summary <- res_all %>%
   ) %>%
   summarise(
     power = mean(pvalue < 0.05, na.rm = TRUE),
-    alt_warning_ratio = mean(alt_warning_type != "None", na.rm = TRUE),
-    null_warning_ratio = mean(null_warning_type != "None", na.rm = TRUE),
+    alt_warning_ratio = mean(alt_warning_msgs != "None", na.rm = TRUE),
+    null_warning_ratio = mean(null_warning_msgs != "None", na.rm = TRUE),
+    pvalue_failure_ratio = mean(status != "Success"),
     n_jobs = n(),
     .groups = "drop"
   )
@@ -177,17 +178,17 @@ res_summary <- res_all %>%
 #install.packages("ggh4x")
 library(ggh4x)
 
-x_var = 'r'
+x_var = 'p'
 row_var <- ifelse(x_var == "r", "p", "r")         # choose "p" or "r" for panel rows
 if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
 q <- 5
 levels_p = c(5, 10, 20, 40, 80)
 levels_r = c(4, 8, 16, 32, 64)
-axis_method_label <- 'Method3'
+axis_method_label <- 'Method1'
 plot_data <- res_summary %>%
   filter(
     family == "poisson",
-    Eigen == 1,
+    Eigen == 2,
     globalTest == FALSE,
     axis_method == axis_method_label | is.na(axis_method)
   ) %>%
@@ -297,22 +298,46 @@ fig <- ggplot(
 
 fig
 
+############################################################
+## Create results directory
+############################################################
+path <- "figures/poisson/Eigen2"
+
+if (!dir.exists(here(path))) {
+  dir.create(
+    here(path),
+    recursive = TRUE
+  )
+}
+
+############################################################
+## Save figures
+############################################################
+ggsave(
+  filename = here(path, "Phy_Poisson_Eigen2_axisMethod1_Power#sp.png"),
+  plot = fig,
+  width = 8,
+  height = 8,
+  dpi = 300
+)
+
+# Plot for comparing eigenvector choosing methods 
 xvar <- 'r'
 if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
 
 plot_data <- res_summary %>%
   filter(
     family == "poisson",
-    Eigen == 1,
+    Eigen == 2,
     globalTest == FALSE,
     model == "glmm_rr",
     axis_method %in% c("Method1", "Method3"),
-    com %in% c(2, 5)
+    com %in% c(3, 4)
   ) %>%
   mutate(
     scenario = case_when(
-      com == 2 ~ "No ΔPD\nwith Δcomposition",
-      com == 5 ~ "No ΔPD\nwith ΔTreatment"
+      com == 3 ~ "No ΔPD\nwith Δcomposition",
+      com == 4 ~ "No ΔPD\nwith ΔTreatment"
     )
   )
 
@@ -405,7 +430,7 @@ fig
 ############################################################
 ## Create results directory
 ############################################################
-path <- "figures/poisson"
+path <- "figures/poisson/Eigen2"
 
 if (!dir.exists(here(path))) {
   dir.create(
@@ -418,12 +443,25 @@ if (!dir.exists(here(path))) {
 ## Save figures
 ############################################################
 ggsave(
-  filename = here(path, "Phy_Poisson_Eigen1_Power_r_axisMethodscompare.png"),
+  filename = here(path, "Phy_Poisson_Eigen2_Power_r_axisMethodscompare.png"),
   plot = fig,
   width = 5.5,
   height = 8,
   dpi = 300
 )
+
+############################################################
+## Summarize warning messages
+############################################################
+
+warning_summary <- res_all %>%
+  group_by(p, r, axis_method, model, Eigen, test, alt_warning_msgs,) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(p, r, axis_method, model, Eigen, test, desc(n))
+warning_summary
 
 ############################################################
 ## Save aggregated results
