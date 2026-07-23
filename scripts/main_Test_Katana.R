@@ -81,13 +81,13 @@ seed <- as.numeric(args[1])
 ## Simulation settings
 ############################################################
 
-family <- c("poisson")
+family <- c("binomial")
 
 p <- c(80)
 
-r <- c(64)
+r <- c(4, 8, 16, 32)
 
-Eigen <- c(2)
+Eigen <- c(1)
 
 
 q <- 5
@@ -109,7 +109,7 @@ quantile <- 0.35
 
 Corr <- 1
 
-axis_method <- "Method3"
+axis_method <- "Both"
 
 ############################################################
 ## Set random seed
@@ -177,7 +177,7 @@ res <- run_simulation(
 ## Save results
 ############################################################
 
-run_name <- "PhyD_Pois_p80_r64_TestBoth_Method3_Eigen2_failed41"
+run_name <- "PhyD_Pois_p80_r481632_TestBoth_MethodBoth_Eigen1"
 
 out_dir <- here("output", run_name)
 

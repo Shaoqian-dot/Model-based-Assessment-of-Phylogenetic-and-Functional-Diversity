@@ -7,7 +7,7 @@ fit_models <- function(dat,
                        S_J,
                        p,
                        q,
-                       axis_method = c('Method1', 'Method2', 'Both')){
+                       axis_method = c('Method1', 'Method3', 'Both')){
   # Likelihood Ratio Test
   get_lrt_row <- function(j, fit_glmm_no_rr, fit_glmm_rr, val_num.eig){
     
@@ -198,15 +198,34 @@ fit_models <- function(dat,
     ))
   } else if (globalTest == FALSE) {
     
+    # if (axis_method == "Both") {
+    #   axis_method_tbl <- data.frame(
+    #     axis_method = c("Method1", "Method3"),
+    #     Methods_para = c(2, NA)
+    #   )
+    # } else if (axis_method == "Method1") {
+    #   axis_method_tbl <- data.frame(
+    #     axis_method = c("Method1"),
+    #     Methods_para = c(2)
+    #   )
+    # } else if (axis_method == "Method3") {
+    #   axis_method_tbl <- data.frame(
+    #     axis_method = c("Method3"),
+    #     Methods_para = c(NA)
+    #   )
+    # }
+    
     axis_method_tbl <- data.frame(
       axis_method = c("Method1", "Method3"),
       Methods_para = c(2, NA)
     )
     
-    if (axis_method == "Both") {
-      axis_method_tbl <- axis_method_tbl
-    } else {
-      axis_method_tbl <- subset(axis_method_tbl, axis_method == axis_method)
+    if (axis_method != "Both") {
+      axis_method_tbl <- axis_method_tbl[
+        axis_method_tbl$axis_method == axis_method,
+        ,
+        drop = FALSE
+      ]
     }
     
     eig <- spectral_decomp(VC_phy_func = S_J)

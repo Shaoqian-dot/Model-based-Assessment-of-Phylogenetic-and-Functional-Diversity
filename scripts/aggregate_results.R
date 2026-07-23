@@ -1,3 +1,4 @@
+#OA: Overall abundance
 rm(list = ls())
 
 ############################################################
@@ -201,10 +202,10 @@ plot_data <- res_summary %>%
     
     ## Column labels
     scenario = dplyr::case_when(
-      com == 3 ~ "Small ΔPD\nwith Δcomposition",
-      com == 4 ~ "Large ΔPD\nwith Δcomposition",
-      com == 2 ~ "No ΔPD\nwith Δcomposition",
-      com == 5 ~ "No ΔPD\nwith ΔTreatment"
+      com == 3 ~ "Small ΔPD\nwith ΔComposition",
+      com == 4 ~ "Large ΔPD\nwith ΔComposition",
+      com == 2 ~ "No ΔPD\nwith ΔComposition",
+      com == 5 ~ "No ΔPD\nwith ΔOverall abundace"
     )
   )
 
@@ -230,10 +231,10 @@ plot_data <- plot_data %>%
 plot_data$scenario <- factor(
   plot_data$scenario,
   levels = c(
-    "Small ΔPD\nwith Δcomposition",
-    "Large ΔPD\nwith Δcomposition",
-    "No ΔPD\nwith Δcomposition",
-    "No ΔPD\nwith ΔTreatment"
+    "Small ΔPD\nwith ΔComposition",
+    "Large ΔPD\nwith ΔComposition",
+    "No ΔPD\nwith ΔComposition",
+    "No ΔPD\nwith ΔOverall abundace"
   )
 )
 
@@ -322,7 +323,8 @@ ggsave(
 )
 
 # Plot for comparing eigenvector choosing methods 
-xvar <- 'r'
+x_var <- 'r'
+row_var <- ifelse(x_var == "r", "p", "r")         # choose "p" or "r" for panel rows
 if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
 
 plot_data <- res_summary %>%
@@ -332,12 +334,12 @@ plot_data <- res_summary %>%
     globalTest == FALSE,
     model == "glmm_rr",
     axis_method %in% c("Method1", "Method3"),
-    com %in% c(3, 4)
+    com %in% c(2, 5)
   ) %>%
   mutate(
     scenario = case_when(
-      com == 3 ~ "No ΔPD\nwith Δcomposition",
-      com == 4 ~ "No ΔPD\nwith ΔTreatment"
+      com == 2 ~ "No ΔPD\nwith ΔComposition",
+      com == 5 ~ "No ΔPD\nwith ΔOverall abundace"
     )
   )
 
@@ -364,8 +366,8 @@ plot_data <- plot_data %>%
 plot_data$scenario <- factor(
   plot_data$scenario,
   levels = c(
-    "No ΔPD\nwith Δcomposition",
-    "No ΔPD\nwith ΔTreatment"
+    "No ΔPD\nwith ΔComposition",
+    "No ΔPD\nwith ΔOverall abundace"
   )
 )
 

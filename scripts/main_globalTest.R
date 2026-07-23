@@ -58,7 +58,7 @@ tree <- ape::read.tree(tree_file)
 ## Main simulation runner
 ###########################################################
 
-axis_method <- 'Both'
+axis_method <- 'Method3'
 signal <- NA
 families <- c("poisson")
 globalTest <- FALSE
@@ -74,7 +74,7 @@ beta <- log(2)
 quantile <- 0.35
 Corr <- 1
 Eigen <- 1
-axis_method <- 'Both'
+
 
 nsim = 1 # The number of simulations
 step <- length(p) * length(r) * length(families) * length(Eigen)

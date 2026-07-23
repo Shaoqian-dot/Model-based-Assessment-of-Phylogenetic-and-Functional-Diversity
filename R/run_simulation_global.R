@@ -31,7 +31,7 @@ run_simulation <- function(
     
     save_path <- file.path(
       path,
-      paste0("Eigen", Eigen, "_", family)
+      paste0("Eigen", Eigen, "_", family, "_", "axis_method", axis_method)
     )
     
     if (!dir.exists(save_path)) {
