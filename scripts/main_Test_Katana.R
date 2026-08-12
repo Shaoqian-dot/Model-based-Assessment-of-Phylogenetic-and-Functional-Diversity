@@ -83,11 +83,11 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(80)
+p <- c(5, 10, 20, 40, 80)
 
-r <- c(4, 8, 16, 32)
+r <- c(4, 8, 16, 32, 64)
 
-Eigen <- c(1)
+Eigen <- c(2)
 
 
 q <- 5
@@ -177,7 +177,7 @@ res <- run_simulation(
 ## Save results
 ############################################################
 
-run_name <- "PhyD_Pois_p80_r481632_TestBoth_MethodBoth_Eigen1"
+run_name <- "PhyD_Bin_p510204080_r48163264_TestBoth_MethodBoth_Eigen2"
 
 out_dir <- here("output", run_name)
 
