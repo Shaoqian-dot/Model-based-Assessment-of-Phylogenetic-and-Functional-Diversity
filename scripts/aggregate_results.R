@@ -17,7 +17,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "PhyD_Pois_p510204080_r_TestBoth_MethodBoth_Eigen2"),
+  here("output", "PhyD_Bin_p_r_TestBoth_MethodBoth_Eigen2"),
   pattern = "\\.rds$",
   recursive = TRUE,
   full.names = TRUE
@@ -86,9 +86,9 @@ res_summary <- res_all %>%
   ) %>%
   summarise(
     power = mean(pvalue < 0.05, na.rm = TRUE),
-    alt_warning_ratio = mean(alt_warning_msgs != "None", na.rm = TRUE),
-    null_warning_ratio = mean(null_warning_msgs != "None", na.rm = TRUE),
-    pvalue_failure_ratio = mean(status != "Success"),
+    #alt_warning_ratio = mean(alt_warning_msgs != "None", na.rm = TRUE),
+    #null_warning_ratio = mean(null_warning_msgs != "None", na.rm = TRUE),
+    #pvalue_failure_ratio = mean(status != "Success"),
     n_jobs = n(),
     .groups = "drop"
   )
@@ -179,17 +179,19 @@ res_summary <- res_all %>%
 #install.packages("ggh4x")
 library(ggh4x)
 
-x_var = 'p'
+x_var = 'r'
 row_var <- ifelse(x_var == "r", "p", "r")         # choose "p" or "r" for panel rows
 if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
 q <- 5
+
+
 levels_p = c(5, 10, 20, 40, 80)
 levels_r = c(4, 8, 16, 32, 64)
-axis_method_label <- 'Method1'
+axis_method_label <- 'Method3'
 plot_data <- res_summary %>%
   filter(
-    family == "poisson",
-    Eigen == 2,
+    family == "binomial",
+    Eigen == 1,
     globalTest == FALSE,
     axis_method == axis_method_label | is.na(axis_method)
   ) %>%
@@ -237,6 +239,8 @@ plot_data$scenario <- factor(
     "No ΔPD\nwith ΔOverall abundace"
   )
 )
+# plot_data <- plot_data |>
+#   dplyr::filter(test_plot != "LRT")
 
 fig <- ggplot(
   plot_data,
@@ -277,7 +281,7 @@ fig <- ggplot(
   ) +
   scale_x_continuous(
     trans = "log2",
-    breaks = if (x_var == "total_n") {
+    breaks = if (x_var == "r") {
       q * levels_r
     } else {
       levels_p
@@ -288,7 +292,7 @@ fig <- ggplot(
   theme_bw() +
   labs(
     x = ifelse(
-      x_var == "total_n",
+      x_var == "r",
       "Sample size (log2 scale)",
       "Number of species (log2 scale)"
     ),
@@ -299,11 +303,140 @@ fig <- ggplot(
 
 fig
 
+
+
+# Produce simplified plot (Wald Test only)
+library(ggh4x)
+
+x_var = 'r'
+row_var <- ifelse(x_var == "r", "p", "r")         # choose "p" or "r" for panel rows
+#if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
+q <- 5
+
+
+levels_p = c(5, 10, 20, 40, 80)
+levels_r = c(4, 8, 16, 32, 64)
+axis_method_label <- 'Method3'
+plot_data <- res_summary %>%
+  filter(
+    family == "binomial",
+    Eigen == 2,
+    globalTest == FALSE,
+    axis_method == axis_method_label | is.na(axis_method)
+  ) %>%
+  mutate(
+    
+    test_plot = ifelse(is.na(test), "Baseline", test),
+    
+    metric = case_when(
+      com %in% c(2,5) ~ "Type I Error",
+      TRUE            ~ "Power"
+    ),
+    
+    scenario = case_when(
+      com == 2 ~ "No ΔPD\nwith ΔComposition",
+      com == 5 ~ "No ΔPD\nwith ΔOverall abundance",
+      com == 3 ~ "Small ΔPD\nwith ΔComposition",
+      com == 4 ~ "Large ΔPD\nwith ΔComposition"
+    )
+  ) %>%
+  filter(test_plot != "LRT")
+
+plot_data$metric <- factor(
+  plot_data$metric,
+  levels = c("Type I Error", "Power")
+)
+
+plot_data$scenario <- factor(
+  plot_data$scenario,
+  levels = c(
+    "No ΔPD\nwith ΔComposition",
+    "No ΔPD\nwith ΔOverall abundance",
+    "Small ΔPD\nwith ΔComposition",
+    "Large ΔPD\nwith ΔComposition"
+  )
+)
+
+plot_data <- plot_data %>%
+  mutate(
+    row_label = if (row_var == "p") {
+      factor(
+        p,
+        levels = levels_p,
+        labels = paste("# Species =", levels_p)
+      )
+    } else {
+      factor(
+        r,
+        levels = levels_r,
+        labels = paste("Sample size =", levels_r)
+      )
+    }
+  )
+plot_data <- plot_data %>%
+  mutate(total_n = q * r)
+
+plot_data <- plot_data |>
+  dplyr::filter(test_plot != "LRT")
+
+fig <- ggplot(
+  plot_data,
+  aes(
+    x = .data[[x_var]],
+    y = power,
+    colour = model,
+    linetype = test_plot,
+    group = interaction(model, test_plot)
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  ggh4x::facet_nested(
+    rows = vars(row_label),
+    cols = vars(metric, scenario),
+    switch = "y"
+  ) +
+  theme(
+    strip.placement = "outside",
+    strip.background = element_blank(),
+    strip.text.y.right = element_text(angle = 0, face = "bold")
+  ) +
+  scale_linetype_manual(
+    values = c(
+      Wald = "dashed",
+      Baseline = "dotdash"
+    )
+  ) +
+  scale_color_manual(
+    values = c(
+      glmm_no_rr = "#1B9E77",
+      glmm_rr = "#D95F02",
+      RaosQ = "#7570B3",
+      `Randomized RaosQ` = "#E7298A"
+    )
+  ) +
+  scale_x_continuous(
+    trans = "log2",
+    breaks = levels_r,
+    labels = levels_r
+  ) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw() +
+  labs(
+    x = "Sample size per community (log2 scale)",
+    y = NULL,
+    colour = "Model",
+    linetype = "Test"
+  )
+
+fig
+
+
 ############################################################
 ## Create results directory
 ############################################################
-path <- "figures/poisson/Eigen2"
-
+path <- "figures/binomial(1,p)/Eigen2"
+#path <- "figures/poisson/Eigen1"
 if (!dir.exists(here(path))) {
   dir.create(
     here(path),
@@ -315,7 +448,7 @@ if (!dir.exists(here(path))) {
 ## Save figures
 ############################################################
 ggsave(
-  filename = here(path, "Phy_Poisson_Eigen2_axisMethod1_Power#sp.png"),
+  filename = here(path, "Phy_binomial_Eigen2_axisMethod3_Wald_Power_r.png"),
   plot = fig,
   width = 8,
   height = 8,
@@ -329,7 +462,7 @@ if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
 
 plot_data <- res_summary %>%
   filter(
-    family == "poisson",
+    family == "binomial",
     Eigen == 2,
     globalTest == FALSE,
     model == "glmm_rr",
@@ -432,7 +565,7 @@ fig
 ############################################################
 ## Create results directory
 ############################################################
-path <- "figures/poisson/Eigen2"
+path <- "figures/binomial(1,p)/Eigen2"
 
 if (!dir.exists(here(path))) {
   dir.create(
@@ -445,7 +578,7 @@ if (!dir.exists(here(path))) {
 ## Save figures
 ############################################################
 ggsave(
-  filename = here(path, "Phy_Poisson_Eigen2_Power_r_axisMethodscompare.png"),
+  filename = here(path, "Phy_binomial_Eigen2_Power_r_axisMethodscompare.png"),
   plot = fig,
   width = 5.5,
   height = 8,
@@ -457,13 +590,17 @@ ggsave(
 ############################################################
 
 warning_summary <- res_all %>%
-  group_by(p, r, axis_method, model, Eigen, test, alt_warning_msgs,) %>%
+  group_by(p, r, axis_method, model, Eigen, test, com, alt_warning_msgs) %>%
   summarise(
     n = n(),
     .groups = "drop"
   ) %>%
-  arrange(p, r, axis_method, model, Eigen, test, desc(n))
+  arrange(p, r, axis_method, model, Eigen, test, com, desc(n))
 warning_summary
+write.csv(
+  warning_summary,
+  "results/warning statistics/Phy_Pois_Eigen2_axisMethodBoth_warning_summary_full.csv"
+)
 
 ############################################################
 ## Save aggregated results
