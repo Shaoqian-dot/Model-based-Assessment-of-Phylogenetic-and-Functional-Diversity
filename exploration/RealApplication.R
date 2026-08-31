@@ -160,7 +160,221 @@ randomization <- function(
   return(ses)
 }
 
+calculate_eta_S_eta <- function(abundance, S) {
+  
+  # Check dimensions
+  if (ncol(abundance) != nrow(S) ||
+      ncol(abundance) != ncol(S)) {
+    stop("The number of species in abundance must match the dimensions of S.")
+  }
+  
+  # Check species names if available
+  if (!is.null(colnames(abundance)) &&
+      !is.null(rownames(S))) {
+    if (!all(colnames(abundance) == rownames(S))) {
+      stop("Species order in abundance and S does not match.")
+    }
+  }
+  
+  # Calculate eta' S eta for each row
+  result <- apply(
+    abundance,
+    1,
+    function(x) {
+      as.numeric(t(x) %*% S %*% x)
+    }
+  )
+  
+  return(result)
+}
 
+Boxplot <- function(
+    data, # data has a group column which categorizes all the observations.
+    group_levels = c(
+      "LF",
+      "MF",
+      "SF",
+      "NE",
+      "SE",
+      "CG",
+      "OP",
+      "OA"
+    ),
+    ylab = "Randomized Rao's Q"
+) {
+  
+  # ===========================================================================
+  # 1. Set group order
+  # ===========================================================================
+  
+  data$group <- factor(
+    data$group,
+    levels = group_levels
+  )
+  
+  
+  # ===========================================================================
+  # 2. Dunn's test with BH correction
+  # ===========================================================================
+  
+  stat.test <- data %>%
+    rstatix::dunn_test(
+      value ~ group,
+      p.adjust.method = "BH"
+    )
+  
+  
+  # ===========================================================================
+  # 3. Compact letter display
+  # ===========================================================================
+  
+  cld <- multcompView::multcompLetters(
+    setNames(
+      stat.test$p.adj,
+      paste(
+        stat.test$group1,
+        stat.test$group2,
+        sep = "-"
+      )
+    )
+  )
+  
+  
+  letters_df <- data.frame(
+    group = names(cld$Letters),
+    label = cld$Letters
+  )
+  
+  
+  # Ensure the same group order is used in the plot.
+  letters_df$group <- factor(
+    letters_df$group,
+    levels = group_levels
+  )
+  
+  
+  # ===========================================================================
+  # 4. Position significance letters
+  # ===========================================================================
+  
+  y_pos <- max(
+    data$value,
+    na.rm = TRUE
+  ) * 1.1
+  
+  
+  # ===========================================================================
+  # 5. Plot
+  # ===========================================================================
+  
+  fig <- ggplot(
+    data,
+    aes(
+      x = group,
+      y = value,
+      fill = group
+    )
+  ) +
+    
+    geom_boxplot(
+      outlier.shape = NA,
+      alpha = 0.7
+    ) +
+    
+    geom_jitter(
+      width = 0.15,
+      alpha = 0.5,
+      size = 2
+    ) +
+    
+    geom_text(
+      data = letters_df,
+      aes(
+        x = group,
+        y = y_pos,
+        label = label
+      ),
+      inherit.aes = FALSE,
+      size = 5
+    ) +
+    
+    theme_classic() +
+    
+    theme(
+      legend.position = "none"
+    ) +
+    
+    labs(
+      x = "Group",
+      y = ylab
+    )
+  
+  
+  return(fig)
+}
+
+Biplot <- function(abundance, P) {
+  
+  # ---------------------------------------------------------------------------
+  # 1. Extract species abundance matrix
+  # ---------------------------------------------------------------------------
+  
+  eta_M <- as.matrix(
+    abundance[, setdiff(colnames(abundance), "Community")]
+  )
+  
+  
+  # ---------------------------------------------------------------------------
+  # 2. Project abundance onto the first two eigenvectors
+  # ---------------------------------------------------------------------------
+  
+  aim <- eta_M %*% P[, c(1, 2)]
+  
+  colnames(aim) <- paste0(
+    "v",
+    1:ncol(aim)
+  )
+  
+  
+  # ---------------------------------------------------------------------------
+  # 3. Create plotting data
+  # ---------------------------------------------------------------------------
+  
+  df_scores <- data.frame(
+    com = abundance$Community,
+    score1 = aim[, 1],
+    score2 = aim[, 2]
+  )
+  
+  
+  # ---------------------------------------------------------------------------
+  # 4. Set community order
+  # ---------------------------------------------------------------------------
+  
+  df_scores$com <- factor(
+    df_scores$com
+  )
+  
+  
+  # ---------------------------------------------------------------------------
+  # 5. Plot
+  # ---------------------------------------------------------------------------
+  
+  ggplot(
+    df_scores,
+    aes(
+      x = score1,
+      y = score2,
+      color = com
+    )
+  ) +
+    geom_point(size = 3) +
+    labs(
+      x = expression(v[1]^T * eta),
+      y = expression(v[2]^T * eta)
+    ) +
+    theme_classic()
+}
 # =============================================================================
 # 2. File paths and source functions
 # =============================================================================
@@ -332,7 +546,7 @@ my.sample.filtered <- my.sample %>%
 species_columns <- colnames(my.sample)[-c(1, 2)]
 
 species_to_keep <- species_columns[
-  zero_prop[species_columns] <= 0.95
+  zero_prop[species_columns] <= 0.55
 ]
 
 my.sample.filtered <- my.sample %>%
@@ -467,12 +681,12 @@ fit_Model_5 <- glmmTMB(
     rr(sp + 0 | id, 2),
   family = "ordbeta",
   REML = FALSE,
-  control = glmmTMBControl(
-    optCtrl = list(
-      iter.max = 1000,
-      eval.max = 1000
-    )
-  ),
+  # control = glmmTMBControl(
+  #   optCtrl = list(
+  #     iter.max = 1000,
+  #     eval.max = 1000
+  #   )
+  # ),
   data = yX
 )
 
@@ -601,26 +815,8 @@ obs_eta <- eta_RA[
 # =============================================================================
 # 15. Generate reduced-rank residual effects
 # =============================================================================
-
-# Extract the fitted reduced-rank factor loadings.
-model_report <- fit_Model_5$obj$env$report()
-
-Lambda <- model_report$fact_load[[1]]
-
-rank <- ncol(Lambda)
-
-
-# Generate standard normal latent variables.
-Z <- MASS::mvrnorm(
-  n = nrow(obs_eta),
-  mu = rep(0, rank),
-  Sigma = diag(rank)
-)
-
-
-# Convert latent variables into species-level residual effects.
-RR <- Z %*% t(Lambda)
-
+ranef_Model <- ranef(fit_Model_5)
+RR <- ranef_Model$cond$id
 
 # =============================================================================
 # 16. Reconstruct model-based species composition
@@ -635,69 +831,14 @@ RR <- Z %*% t(Lambda)
 # Columns = species
 
 eta_total <- obs_eta + RR
-
-
+colnames(eta_total) <- selected_species
+rownames(eta_total) <- my.sample.filtered$Community
 # =============================================================================
-# 17. Project model-based composition onto phylogenetic eigenvectors
-# =============================================================================
-
-# Project each observation's species-composition vector onto the first two
-# eigenvectors of the centred similarity matrix.
-
-eta_M <- eta_total
-
-aim <- eta_M %*%
-  P_J[, c(1, 2)]
-
-colnames(aim) <- paste0(
-  "p",
-  1:ncol(aim)
-)
-
-
-# Create plotting dataset.
-df_scores <- data.frame(
-  com = my.sample.filtered$Community,
-  score1 = aim[, 1],
-  score2 = aim[, 2]
-)
-
-
-# Set the desired order of communities.
-df_scores$com <- factor(
-  df_scores$com,
-  levels = c(
-    "LF",
-    "MF",
-    "SF",
-    "NE",
-    "SE",
-    "CG",
-    "OP",
-    "OA"
-  )
-)
-
-
-# =============================================================================
-# 18. Plot the model-based species-composition scores
+# 18. Project model-based composition onto phylogenetic eigenvectors and 
+#     Plot the model-based species-composition scores
 # =============================================================================
 
-ggplot(
-  df_scores,
-  aes(
-    x = score1,
-    y = score2,
-    color = com
-  )
-) +
-  geom_point(size = 3) +
-  labs(
-    x = expression(v[1]^T * eta),
-    y = expression(v[2]^T * eta)
-  ) +
-  theme_classic()
-
+Biplot(abundance = eta_total, P = P_J)
 
 # =============================================================================
 # 19. Randomized Rao's Q
@@ -726,115 +867,92 @@ RaosQ_rand_data <- data.frame(
   value = RaosQ_rand
 )
 
+fig1 <- plot_randomized_raosQ(RaosQ_rand_data)
 
+fig1
 # =============================================================================
-# 20. Dunn's test with BH correction
+# 20. eta_B^{T}S eta_B
 # =============================================================================
 
-RaosQ_rand_data$group <- factor(
-  RaosQ_rand_data$group,
-  levels = c(
-    "LF",
-    "MF",
-    "SF",
-    "NE",
-    "SE",
-    "CG",
-    "OP",
-    "OA"
-  )
+# Ensure that the abundance matrix has the same species and ordering as the
+# phylogenetic similarity matrix.
+
+Rabundance <- eta_M[
+  ,
+  colnames(DM_phy_func),
+  drop = FALSE
+]
+
+
+# Calculate SES of Rao's Q using tip randomization.
+DivModel <- calculate_eta_S_eta(abundance = Rabundance, S = DM_phy_func)
+
+# Combine Rao's Q values with community groups.
+DivModel_data <- data.frame(
+  group = df_scores$com,
+  value = DivModel
 )
 
+fig2 <- plot_randomized_raosQ(DivModel_data)
 
-stat.test <- RaosQ_rand_data %>%
-  dunn_test(
-    value ~ group,
-    p.adjust.method = "BH"
-  )
-
+fig2
 
 # =============================================================================
-# 21. Compact letter display
+# 21. Rao's Q
 # =============================================================================
 
-cld <- multcompView::multcompLetters(
-  setNames(
-    stat.test$p.adj,
-    paste(
-      stat.test$group1,
-      stat.test$group2,
-      sep = "-"
-    )
-  )
+# Ensure that the abundance matrix has the same species and ordering as the
+# phylogenetic distance matrix.
+
+abundance <- my.sample.filtered[
+  ,
+  colnames(DM_phy_func),
+  drop = FALSE
+]
+
+
+# Calculate SES of Rao's Q using tip randomization.
+RaosQ <- RaoQ(
+  my.sample = abundance,
+  DM = DM_phy_func
 )
 
-
-letters_df <- data.frame(
-  group = names(cld$Letters),
-  label = cld$Letters
+# Combine Rao's Q values with community groups.
+RaosQ_data <- data.frame(
+  group = df_scores$com,
+  value = RaosQ
 )
 
+fig3 <- plot_randomized_raosQ(RaosQ_data)
 
-# Ensure the same group order is used in the plot.
-letters_df$group <- factor(
-  letters_df$group,
-  levels = levels(RaosQ_rand_data$group)
+fig3
+
+# =============================================================================
+# 20. eta^{T} S eta
+# =============================================================================
+eta_full <- predict(fit_Model_5, type = 'link')
+
+eta_full_M <- matrix(
+  eta_full,
+  ncol = m,
+  byrow = TRUE
+)
+colnames(eta_full_M) <- selected_species
+
+Abundance <- eta_full_M[
+  ,
+  colnames(DM_phy_func),
+  drop = FALSE
+]
+
+DivModel_full <- calculate_eta_S_eta(abundance = Abundance, S = VC_phy_func)
+
+# Combine Rao's Q values with community groups.
+DivModel_data_full <- data.frame(
+  group = df_scores$com,
+  value = DivModel_full
 )
 
+fig4 <- plot_randomized_raosQ(DivModel_data_full)
 
-# Position the significance letters above the boxplots.
-y_pos <- max(
-  RaosQ_rand_data$value,
-  na.rm = TRUE
-) * 1.1
-
-
-# =============================================================================
-# 22. Plot randomized Rao's Q
-# =============================================================================
-
-ggplot(
-  RaosQ_rand_data,
-  aes(
-    x = group,
-    y = value,
-    fill = group
-  )
-) +
-  
-  # Boxplots show the distribution of randomized Rao's Q.
-  geom_boxplot(
-    outlier.shape = NA,
-    alpha = 0.7
-  ) +
-  
-  # Add individual observations.
-  geom_jitter(
-    width = 0.15,
-    alpha = 0.5,
-    size = 2
-  ) +
-  
-  # Add compact-letter significance groups.
-  geom_text(
-    data = letters_df,
-    aes(
-      x = group,
-      y = y_pos,
-      label = label
-    ),
-    inherit.aes = FALSE,
-    size = 5
-  ) +
-  
-  theme_classic() +
-  
-  theme(
-    legend.position = "none"
-  ) +
-  
-  labs(
-    x = "Group",
-    y = "Randomized Rao's Q"
-  )
-
+fig4

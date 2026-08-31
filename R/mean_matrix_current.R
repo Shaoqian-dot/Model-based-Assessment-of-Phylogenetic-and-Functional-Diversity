@@ -58,6 +58,8 @@ mean_matrix <- function (Index_change, beta, alpha,
     Mean_matrix_full <- exp(Mean_matrix_logit_cor)
   }
   assign('Mean_matrix_full', Mean_matrix_full, envir =  .GlobalEnv)
+  assign('Mean_matrix_logit', Mean_matrix_logit, envir =  .GlobalEnv)
+  assign('Mean_matrix_logit_cor', Mean_matrix_logit_cor, envir =  .GlobalEnv)
   # Return final mean matrix
   return(Mean_matrix_full)
 }
