@@ -1,4 +1,7 @@
-Biplot <- function(abundance, P) {
+Biplot <- function(abundance, P, plot_labs = labs(
+  x = expression(v[1]^T * eta[B]),
+  y = expression(v[2]^T * eta[B])
+)) {
      
        # ---------------------------------------------------------------------------
      # Extract species-level effects
@@ -56,10 +59,7 @@ Biplot <- function(abundance, P) {
                        )
                    ) +
                    geom_point(size = 3) +
-                   labs(
-                       x = expression(v[1]^T * eta),
-                       y = expression(v[2]^T * eta)
-                     ) +
+                   plot_labs +
                    coord_fixed(ratio = 1) +
                    theme_classic()
              }

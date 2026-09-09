@@ -60,7 +60,7 @@ quantile <- 0.35
 Corr <- 1
 Eigen <- 2
 NOPS <- 1
-DM_ge <- 1 # 1: DM is generated from the PCV data set; 2 DM is manually designed. 
+DM_ge <- 2 # 1: DM is generated from the PCV data set; 2 DM is manually designed. 
 
 # =============================================================================
 # 2. Construct phylogenetic distance and similarity matrices
@@ -252,7 +252,6 @@ eta_RA_M <- cbind(
 
 # Obtain the fitted linear predictor for each observation.
 eta_TA_M <- eta_TA_fe_M + RR
-
 # Add community labels.
 eta_TA_M <- cbind(
   com = com,

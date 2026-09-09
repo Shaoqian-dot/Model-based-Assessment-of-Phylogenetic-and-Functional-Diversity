@@ -1,0 +1,195 @@
+---
+title: "Model-based diversity measure and plot checking"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(mvtnorm)
+library(glmmTMB)
+library(magrittr)
+library(rstatix)
+library(ggplot2)
+source('../R/simulate_random_effects.R')
+source('../R/Boxplot.R')
+source('../R/Biplot.R')
+set.seed(123)
+logit <- function (x){
+  fun <- log(x / (1 - x))
+  return(fun)
+}
+expit <- function (x){
+  fun <- exp(x)/ (1 + exp(x))
+  return(fun)
+}
+```
+
+## Data Generation
+
+### Set up parameters
+
+```{r}
+r <- 128 # sample size in each com
+p <- 5 # the number of species
+q <- 6 # the number of communities
+## Mean abundance
+mu=matrix(c(0.8,0.2,0.8,0.2,0.8,0.2,0.8,0.8,0.2,0.8,0.8,0.8,0.2,0.2,0.8,0.8,0.8,0.8,0.2,0.2,2/3,1/9,2/3,1/9,2/3, 0.8, 0.2, 0.2, 0.8, 0.8),ncol=6)
+rownames(mu)=LETTERS[1:5]
+colnames(mu)=1:q
+mu <- t(mu)
+print(mu)
+
+## Distance Matrix
+D=matrix(c(0,1,2,3,4,1,0,2,3,4,2,2,0,3,4,3,3,3,0,4,4,4,4,4,0),ncol=5)
+colnames(D)=rownames(D)=LETTERS[1:5]
+print(D)
+```
+
+### Produce mean abundances with correlations
+
+```{r}
+## Mean abundance matrix
+# Expand mu across sites
+mu_site <- mu[rep(c(1 : q), each = r), ] 
+
+# Calculate variance and covariance matrix of u
+S <- max(D) - D 
+mean <- rep(0, p)
+sigma <- S
+
+# Generate r * p multivariate normal samples
+resi_corr <- rmvnorm(n = r * q, mean = mean, sigma = sigma) 
+
+# Linear predictors 
+eta_site <- logit(mu_site) + resi_corr 
+eta <- logit(mu)
+print(eta)
+
+# Mean abundance matrix with correlations
+mu_eta_site <- expit(eta_site)
+```
+
+## Data Generation
+
+```{r}
+## Abundance matrix
+abundance <- mu_eta_site
+abundance[] <- rbinom(length(mu_eta_site), size = 1, prob = mu_eta_site)
+
+# Create community factor (1:q repeated r times each)
+com <- factor(rep(1:q, each=r))
+
+# Combine abundance matrix and community labels into a data frame
+yX <- data.frame(abundance, com)
+
+## Long format abundance data
+yX <- reshape(yX, direction = "long", varying = colnames(abundance),
+              v.names = "y", timevar = "sp")
+
+# Convert species column to factor
+yX$sp <- factor(yX$sp)
+```
+
+## Modelling
+
+```{r}
+model <- glmmTMB (y ~ com * sp + rr(sp + 0 | id, 2),
+                  family = 'binomial',
+                  data = yX) 
+```
+
+## Prediction
+
+```{r}
+## Extract fixed effects 
+eta_T_fe_hat <- predict(model, 
+                   type = "link",
+                   re.form = NA)
+
+# Arrange the fixed effecs into a matrix
+eta_T_fe_hat_M <- matrix(
+  as.numeric(eta_T_fe_hat),
+  ncol = p,
+  byrow = FALSE
+)
+
+# Calculate row centered fixed effects 
+eta_R_fe_hat <-  eta_T_fe_hat - apply(eta_T_fe_hat_M, 1, mean) 
+
+##  Extract random effects
+RR <- simulate_random_effects(model = model)
+
+## Calculate eta_B and mu_eta_B
+eta_R_hat <- eta_R_fe_hat + RR
+mu_eta_R_hat <- expit(eta_R_hat)
+```
+
+## Diversity Assessment and Plot Making
+
+```{r}
+## True diversity for reference
+Div_TRUE <- rowSums(mu %*% D * mu)
+print(Div_TRUE)
+
+## Model-based Diversity Assessment 
+Div_Model <-  rowSums(mu_eta_R_hat %*% D * mu_eta_R_hat)
+Div_Model_data <- data.frame(
+  group = com,
+  value = Div_Model
+)
+```
+
+```{r}
+
+## Produce boxplot for model-based diversity in each com 
+Boxplot(data = Div_Model_data,
+        group_levels = c(
+          '1',
+          '2',
+          '3',
+          '4',
+          '5',
+          '6'),
+        ylab = "mu_B^{T}Dmu_B"
+        )
+```
+
+The boxplots show the exact diversities as true diversities, which implies that $\mu_B D \mu_B$ can measure diversity when we are studying relative abundance.
+
+```{r}
+## Produce biplot to project \eta_B and \mu_B. 
+Biplot(abundance = cbind(com, eta_R_hat), P = eigen(S)$vectors)
+Biplot(abundance = cbind(com, expit(eta_R_hat)), P = eigen(S)$vectors, plot_labs = labs(
+  x = expression(v[1]^T * mu[B]),
+  y = expression(v[2]^T * mu[B])
+))
+
+# Producing biplots by changing S to S_J for extracting eigen-vectors
+J <- diag(rep(1, p)) -  1/p * matrix(1, p, p)
+Biplot(abundance = cbind(com, eta_R_hat), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T * eta[B]),
+  y = expression(v[J2]^T * eta[B])
+))
+Biplot(abundance = cbind(com, expit(eta_R_hat)), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T * mu[B]),
+  y = expression(v[J2]^T * mu[B])
+))
+```
+
+The function Biplot() projects $\eta_B$/$\mu_B$ along the first two eigenvectors of $S$ and $S_J$. Changing $S$ to $S_J$ is to determine if we want to exclude vector $\boldsymbol{1}$ in the projection space. The biplot shows that the way that the 6 communities are arranged in biplot is different when using $S$ and $S_J$. Specifically, for the case using $S$, where the projection space does not exclude vector$\boldsymbol{1}$, the plots shows that the correlation is almost parallel to $v_1$, and com 4 moves downwards directly along $v_2$ obviously, and com 6 hardly moves away from com 1; In terms of using $S_J$, namely the projection space excludes vector 1, com 4 (diversity decreases) and com 6 (diversity increases) moves towards different directions along the anti-diagonal, which may imply that diversity decreases towards unpper-left anti-diagonal and increases towards down-right anti-diagonal. Hence, the comparison of using $S$ or $S_J$ illustrates that projecting $eta_B$/$mu_B$ into the space excluding vector $1$ is more reasonable. In fact, including vector $\boldsymbol{1}$ is useless because there is no diversity change along $\boldsymbol{1}$ when we are studying relative diversity.
+
+In terms of the comparison of projecting $\eta_B$ or projecting $\mu_B$, the plot show that there is no obvious difference either we project $\eta_B$ or $\mu_B$ except for the axes scale.
+
+## Concerns
+
+1 A concern for the current design when $\#$ species is uneven numbers is the values of relative abundance at the logit scale and abundance scale are not convertible into each other. For example, for com 1, relative abundance at mean abundance scale is $(0.8, 0.2, 0.8, 0.2, 0.8)$; However, relative abundance at logit scale, if we have a sum-to-zero constraint on relative abundance on logit scale, is $(1.39, -1.39, 1.39, -1.39, 1.39) - 0.28 = (1.11, -1.63, 1.11, -1.63, 1.11)$ (0.28 is the vector average of $(1.39, -1.39, 1.39, -1.39, 1.39)$). Then, the transformed relative abundance from logit scale to abundance scale by $g^{-1}$ is $(0.75, 0.16, 0.75, 0.16, 0.75)$, which is not equal to $(0.8, 0.2, 0.8, 0.2, 0.8)$. My question is that if $\mu_B = g^{-1}(\eta_B)$ reflect the true relative abundance. The concern disappears when $\#$ sp is enven number because relative abundance we design at logit scale satisfies a sum-to-zero constrtaint.
+
+## Conclusions
+
+1 When we are studying relative abundance, $\mu_B^{\top} D \mu_B$ can reflect the true diversity . However, we need to think about if $\mu_B$ represents relative abundance when the number of species in uneven.
+
+2 For projecting $\eta_B$ or $\mu_B$, the projection space should exclude vector $\boldsymbol{1}$.
+
+3 For determining projecting $\eta_B$ or $\mu_B$, there is no big difference either projecting $\eta_B$ or $\mu_B$.
+
