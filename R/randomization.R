@@ -1,4 +1,5 @@
 # Create a function to perform randomization and compute standardized effect size (SES)
+# abundance is a matrix. 
 randomization <- function(abundance, DM_phy_func){
   # Number of species
   m <- nrow(DM_phy_func)

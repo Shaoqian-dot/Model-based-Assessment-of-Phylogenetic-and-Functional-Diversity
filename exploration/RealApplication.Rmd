@@ -1,0 +1,338 @@
+---
+title: "Assess diversity of the PCV data set"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+library(mvtnorm)
+library(magrittr)
+library(rstatix)
+library(ggplot2)
+library(glmmTMB)
+library(ape)
+library(picante)
+library(MASS)
+library(tidyverse)
+library(FD)
+library(DHARMa)
+library(ecostats)
+library(vegan)
+library(emmeans)
+library(rstatix)
+library(multcompView)
+expit <- function (x){
+  fun <- exp(x)/ (1 + exp(x))
+  return(fun)
+}
+source('../R/simulate_random_effects.R')
+source('../R/Boxplot.R')
+source('../R/Biplot_arrow.R')
+source('../R/RaoQ.R')
+source('../R/rand.RaoQ.fun.R')
+source('../R/randomization.R')
+source(system.file("misc", "extract_rr.R", package = "glmmTMB"))
+## Function to produce boxplot for model-based diversity
+make_div_boxplot <- function(eta_B_u_hat, ylab) {
+  
+  # Match the order of species in the data set with that in the distance matrix
+  colnames(eta_B_u_hat) <- selected_species
+  eta_B_u_hat <- eta_B_u_hat[, colnames(DM_phy_func)]
+  
+  # Calculate model-based diversity
+  Div_Model <- rowSums(
+    eta_B_u_hat %*% DM_phy_func * eta_B_u_hat
+  )
+  
+  # Create data frame for plotting
+  Div_Model_data <- data.frame(
+    group = my.sample.filtered$Community,
+    value = Div_Model
+  )
+  
+  # Produce boxplot
+  Boxplot(
+    data = Div_Model_data,
+    group_levels = c(
+      "LF",
+      "MF",
+      "SF",
+      "NE",
+      "SE",
+      "CG",
+      "OP",
+      "OA"
+    ),
+    ylab = ylab
+  )
+}
+set.seed(123)
+```
+
+## Aims
+The document aims to apply the proposed model-based assessment of diversity on the percentage cover value (PCV) data set and compare the proposed approach with randomized Rao's Q. 
+
+In order to simplify the modelling the process, I keep the species whose absence rate is lower than $55\%$, so there are 12 out of 296 species are left.   
+
+## Data Pro-Processing
+### Read raw data
+```{r}
+tree <- read.tree("../data/example.tre")
+
+trait <- read.csv(
+  "../data/trait data.csv",
+  stringsAsFactors = FALSE
+)
+
+my.sample <- read.csv(
+  "../data/community data.csv",
+  stringsAsFactors = FALSE
+)
+```
+
+### Harmonize species names between tree and community data
+```{r}
+# Convert underscores in tree tip labels to periods to match the community data.
+tree_species <- str_replace_all(
+  tree$tip.label,
+  "_",
+  "."
+)
+
+community_species <- colnames(my.sample)
+
+# Identify tree species whose names do not have a unique match in the
+# community dataset.
+unmatched_index <- which(
+  !tree_species %in% community_species
+)
+
+# Manually correct known species-name mismatches.
+tree_species[unmatched_index] <- c(
+  "Astragalus.dasyanthus.exscapus",
+  "Populus.alba...P..x.canescens",
+  "Capsella.bursa.pastoris",
+  "Festuca.rupicola.valesiaca",
+  "Stipa.borysthenica.capillata"
+)
+
+tree$tip.label <- tree_species
+```
+
+### Filter community data by removing rare species
+```{r}
+# Keep species missing in less than rare_threshold of plots.
+zero_threshold <- 0.55
+zero_prop <- colMeans(
+  my.sample == 0,
+  na.rm = TRUE
+)
+
+my.sample.filtered <- my.sample %>%
+  select(
+    where(~ TRUE)
+  )
+
+# Apply the occurrence filter only to species columns.
+species_columns <- colnames(my.sample)[-c(1, 2)]
+
+species_to_keep <- species_columns[
+  zero_prop[species_columns] <= zero_threshold 
+]
+
+my.sample.filtered <- my.sample %>%
+  select(
+    all_of(colnames(my.sample)[1:2]),
+    all_of(species_to_keep)
+  )
+
+
+# Species retained for the model.
+selected_species <- colnames(
+  my.sample.filtered
+)[-c(1, 2)]
+
+# The number if species retained for the model
+p <- length(selected_species)
+
+```
+Species present more than 45% of all the plots are kept.
+
+### Convert community data to long format
+```{r}
+yX <- reshape(
+  my.sample.filtered,
+  direction = "long",
+  varying = selected_species,
+  v.names = "y",
+  timevar = "sp",
+  times = selected_species
+)
+
+# Convert grouping variables to factors.
+yX[c("sp", "Site", "Community", "id")] <-
+  lapply(
+    yX[c("sp", "Site", "Community", "id")],
+    factor
+  )
+
+# Convert percentage cover to proportions.
+yX$y <- yX$y / 100
+
+# ordBeta requires values strictly between 0 and 1.
+yX$y[yX$y >= 1] <- 0.9999
+```
+
+
+## Distance and Similarity Matrices
+```{r}
+# Keep only species present in the filtered community dataset.
+subtree <- keep.tip(
+  tree,
+  selected_species
+)
+# Replace species labels
+subtree_plot <- subtree
+subtree_plot$tip.label <- paste0("sp", seq_along(subtree_plot$tip.label))
+
+plot(subtree_plot)
+     
+# Phylogenetic distance matrix.
+DM_phy_func <- cophenetic.phylo(subtree)
+
+
+# Convert distance to a similarity-like matrix.
+VC_phy_func <- max(DM_phy_func) - DM_phy_func
+
+
+# Project the similarity matrix onto the centred subspace
+
+J <- diag(p) -
+  (1 / p) * matrix(1, p, p)
+
+
+VC_phy_func_J <- J %*%
+  VC_phy_func %*%
+  J
+
+V_J <- eigen(VC_phy_func_J)$vectors
+D_J <- eigen(VC_phy_func_J)$values
+```
+$\boldsymbol{V}_J$ is the eigenvector matrix of $\boldsymbol{S}_J$. Column space of $\boldsymbol{V}_J$ strategically represents $\boldsymbol{R}^{p}$ as $\boldsymbol{1}^{\perp} \oplus \boldsymbol{1}$, where the former is the relative abundance space and latter is the total abundance space.
+
+## Modelling and Modelling Diagnosis
+```{r}
+# e <- new.env()
+# load("C:/Users/huang/OneDrive - UNSW/PhD Project/Model contrasts/Simulation/Simulation with wide settings/Code refactoring/Model-based assessment of PD and FD/Real application/Model/workspace_20260419.RData", envir = e)
+# 
+# model <- e$fit_Model_5
+
+model <- glmmTMB(
+  y ~ sp +
+    Community +
+    sp:Community +
+    rr(sp + 0 | id, 2),
+  family = "ordbeta",
+  REML = FALSE,
+  data = yX
+)
+```
+
+## Diversity Assessment
+### Extract fixed and random effects
+```{r}
+## Estimates of fixed effects, eta_T
+eta_T_hat <- predict(model, 
+                   type = "link",
+                   re.form = NA)
+
+# Arrange eta_T_hat into a matrix
+eta_T_hat <- matrix(
+  as.numeric(eta_T_hat),
+  ncol = p,
+  byrow = FALSE
+)
+
+# Estimates of row centered fixed effects, eta_B 
+eta_B_hat <- eta_T_hat %*% J 
+
+##  Estimates of conditional random effects on y
+RR <- simulate_random_effects(model = model, uncertainty = TRUE)
+```
+
+### Dose $\hat{\mu}_B^{\top}D\hat{\mu}_B$ can measure diversity correctly? 
+
+```{r}
+## Randomized Rao's Q diversity for reference
+# Ensure that the abundance matrix has the same species and ordering as the
+# phylogenetic distance matrix.
+
+abundance <- as.matrix(my.sample.filtered[
+  ,
+  colnames(DM_phy_func),
+  drop = FALSE
+])
+
+# Calculate SES of Rao's Q using tip randomization.
+RaosQ_rand <- randomization(
+  abundance = abundance,
+  DM_phy_func = DM_phy_func
+)
+
+# Combine Rao's Q values with community groups.
+RaosQ_rand_data <- data.frame(
+  group = my.sample.filtered$Community,
+  value = RaosQ_rand
+)
+
+fig1 <- Boxplot(data = RaosQ_rand_data,
+                group_levels = c(
+      "LF",
+      "MF",
+      "SF",
+      "NE",
+      "SE",
+      "CG",
+      "OP",
+      "OA"
+    ),
+    ylab = "Randomized Rao's Q")
+fig1
+
+## Produce boxplot for model-based diversity in each com 
+# Mean abundance scale
+mu_eta_B_u_hat <- expit(eta_B_hat + RR)
+
+p_mu <- make_div_boxplot(
+  mu_eta_B_u_hat,
+  ylab = expression(mu[B]^T * D * mu[B])
+)
+p_mu
+# Logit scale
+eta_B_u_hat <- eta_B_hat + RR # Question here : should I use RR %*% J or RR?
+
+p_eta <- make_div_boxplot(
+  eta_B_u_hat,
+  ylab = expression(eta[B]^T * D * eta[B])
+)
+p_eta
+
+```
+The first biplot indicates a reference. The second plot shows boxplots $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$, which indicates an almost reversed trend with randomized Rao's Q. 
+
+In terms of $\boldsymbol{\boldsymbol{\eta}_B}^{\top}\boldsymbol{D}\boldsymbol{\eta}_B$, which I produced accidentally, it shows a similar trend with randomized Rao's Q. 
+
+### Biplot
+```{r}
+## Produce a biplot based on estimate of \eta_T + u (Estimate \eta_T and u)
+eta_T_u_hat  <-  eta_T_hat + RR
+colnames(eta_T_u_hat) <- selected_species
+eta_T_u_hat <- eta_T_u_hat[, colnames(DM_phy_func)]
+eta_T_u_hat_data <- cbind('com' = my.sample.filtered$Community, eta_T_u_hat)
+Biplot(abundance = eta_T_u_hat_data, P = eigen(VC_phy_func_J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T),
+  y = expression(v[J2]^T)
+), c = 7)
+```

@@ -14,7 +14,7 @@ library(rstatix)
 library(ggplot2)
 source('../R/simulate_random_effects.R')
 source('../R/Boxplot.R')
-source('../R/Biplot.R')
+source('../R/Biplot_arrow.R')
 set.seed(123)
 logit <- function (x){
   fun <- log(x / (1 - x))
@@ -130,7 +130,7 @@ eta_T_hat <- matrix(
 eta_B_hat <- eta_T_hat %*% J 
 
 ##  Estimates of conditional random effects on y
-RR <- simulate_random_effects(model = model)
+RR <- simulate_random_effects(model = model, uncertainty = TRUE)
 ```
 
 ### Dose $\hat{\mu}_B^{\top}D\hat{\mu}_B$ can measure diversity correctly? 
@@ -151,7 +151,7 @@ The results show the comparison of $\mu_B^{\top}D\mu_B$ and $\hat{\mu}_B^{\top}D
 ```{r}
 ## Produce boxplot for model-based diversity in each com 
 # Model-based Diversity Assessment 
-mu_eta_B_u_hat <- eta_B_hat + RR 
+mu_eta_B_u_hat <- expit(eta_B_hat + RR) 
 Div_Model <-  rowSums(mu_eta_B_u_hat %*% D * mu_eta_B_u_hat)
 Div_Model_data <- data.frame(
   group = com,
@@ -177,17 +177,17 @@ The boxplots plot $\hat{\mu}_B D \hat{\mu}_B$ by adding samples from $u|y$, whic
 Biplot(abundance = cbind(com, eta_u_site), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
   x = expression(v[J1]^T * eta[B]),
   y = expression(v[J2]^T * eta[B])
-))
+), c = 5)
 
 ## Produce a biplot based on estimate of \eta_B + u (Estimate \eta_B and u)
 eta_T_u_hat  <-  eta_T_hat + RR
 colnames(eta_T_u_hat) <- LETTERS[1:5]
-Biplot(abundance = cbind(com, eta_T_u_hat + RR), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+Biplot(abundance = cbind(com, eta_T_u_hat), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
   x = expression(v[J1]^T * (hat(eta[B]) + hat(u) * "|" * y)),
   y = expression(v[J2]^T * (hat(eta[B]) + hat(u) * "|" * y))
-))
+), c = 5)
 
-## Produce biplot to project \eta_B_hat + u (Only estimate \eta_B). 
+## Produce biplot to project \eta_B_hat + u (Only estimate \eta_B).
 eta_T_hat_u <- eta_T_hat + resi_corr
 colnames(eta_T_hat_u) <- LETTERS[1:5]
 Biplot(abundance = cbind(com, eta_T_hat_u), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
@@ -199,6 +199,8 @@ Biplot(abundance = cbind(com, eta_T_hat_u), P = eigen(J %*% S %*% J)$vectors, pl
 The first biplot shows the projection of real parameters $\eta + u$ on $v_J1$ and $v_J2$, which is as the expectation.
 The second biplot shows the projection of estimates of $\eta + u$ on $v_J1$ and $v_J2$. The estimator is  $\hat{\eta}_T + \hat{u}|y$. The difference with expectation is the distribution of the points in each com, where we use a posterior distribution in the estimator. 
 In order to check if the difference of the two plots is caused by using $\hat{u}|y$ in $\hat{\eta}_T + \hat{u}|y$, I produce a biplot to project $\hat{\eta}_T + u$ by changing  $\hat{u}|y$ to $u$ in $\hat{\eta}_T + \hat{u}|y$, which is shown in the third biplot.
+
+The arrows in the second biplot show the contribution of the species to the two factors: species 5 has positive contribution to $\boldsymbol{v}_{J1}$ and species 4 has negative contribution to $\boldsymbol{v}_{J2}$. Com 4 has low mean abundance of sp 4 and sp5, so it is located at top-left direction of the origin; com 6 has high abundance of sp 4 and sp5, so it is located at the down-right direction of the origin; com 1, com 2 and com 3 has low mean abundance of sp 4 and high mean abundance of sp 5, so they are located at the top-right direction of the origin. Since com 6 has the most diversity and com 4 has the lowest diversity, we can say the abundance of sp 4 and sp 5 contributes significantly to diversity.    
 
 <!-- The function Biplot() projects $\eta_B$/$\mu_B$ along the first two eigenvectors of $S$ and $S_J$. Changing $S$ to $S_J$ is to determine if we want to exclude vector $\boldsymbol{1}$ in the projection space. The biplot shows that the way that the 6 communities are arranged in biplot is different when using $S$ and $S_J$. Specifically, for the case using $S$, where the projection space does not exclude vector$\boldsymbol{1}$, the plots shows that the correlation is almost parallel to $v_1$, and com 4 moves downwards directly along $v_2$ obviously, and com 6 hardly moves away from com 1; In terms of using $S_J$, namely the projection space excludes vector 1, com 4 (diversity decreases) and com 6 (diversity increases) moves towards different directions along the anti-diagonal, which may imply that diversity decreases towards unpper-left anti-diagonal and increases towards down-right anti-diagonal. Hence, the comparison of using $S$ or $S_J$ illustrates that projecting $\eta_B$/$\mu_B$ into the space excluding vector $1$ is more reasonable. In fact, including vector $\boldsymbol{1}$ is useless because there is no diversity change along $\boldsymbol{1}$ when we are studying relative diversity. -->
 
