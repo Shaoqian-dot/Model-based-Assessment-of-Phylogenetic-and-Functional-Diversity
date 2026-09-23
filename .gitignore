@@ -15,6 +15,6 @@ results/*.RData
 figures/
 
 # Large raw data
-# data/*.rds
+   data/*.rds
 # data/*.csv
 
