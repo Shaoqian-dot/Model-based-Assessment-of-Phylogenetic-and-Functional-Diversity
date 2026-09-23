@@ -1,0 +1,245 @@
+---
+title: "Diversity check_Sim Beta data"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+library(mvtnorm)
+library(glmmTMB)
+library(magrittr)
+library(rstatix)
+library(ggplot2)
+source('../R/simulate_random_effects.R')
+source('../R/Boxplot.R')
+source('../R/Biplot_arrow.R')
+source('../R/RaoQ.R')
+source('../R/rand.RaoQ.fun.R')
+source('../R/randomization.R')
+set.seed(123)
+logit <- function (x){
+  fun <- log(x / (1 - x))
+  return(fun)
+}
+expit <- function (x){
+  fun <- exp(x)/ (1 + exp(x))
+  return(fun)
+}
+```
+## Aims
+The document aims to check, under percentage cover data,
+(1) if the proposed diversity measure $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ is a good measure of diversity. 
+(2) if the proposed measure of diversity ($\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$) is consistent with Rao's Q and randomized Rao's Q?
+(3) if the proposed measure of diversity estimator ($\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$) is consistent with Rao's Q and randomized Rao's Q? 
+
+## DGM
+
+### Set up parameters
+```{r}
+r <- 128 # sample size in each com
+p <- 5 # the number of species
+q <- 6 # the number of communities
+## Mean abundance
+mu=matrix(c(0.8,0.2,0.8,0.2,0.8,0.2,0.8,0.8,0.2,0.8,0.8,0.8,0.2,0.2,0.8,0.8,0.8,0.8,0.2,0.2,2/3,1/9,2/3,1/9,2/3, 0.8, 0.2, 0.2, 0.8, 0.8),ncol=6)
+rownames(mu)=LETTERS[1:5]
+colnames(mu)=1:q
+mu <- t(mu)
+print("--- Mean Abundance ---")
+print(mu)
+# Beta parameters for producing mu
+alpha <- matrix(c(8, 2, 8, 2, 8,
+                  2, 8, 8, 2, 8,
+                  8, 8, 2, 2, 8,
+                  8, 8, 8, 2, 2,
+                  2, 1, 2, 1, 2,
+                  8, 2, 2, 8, 8), nrow = 6, ncol = 5, byrow = TRUE
+                )
+colnames(alpha)=LETTERS[1:5]
+beta <- matrix(c(2, 8, 2, 8, 2,
+                 8, 2, 2, 8, 2, 
+                 2, 2, 8, 8, 2,
+                 2, 2, 2, 8, 8,
+                 1, 8, 1, 8, 1,
+                 2, 8, 8, 2, 2), nrow = 6, ncol = 5, byrow = TRUE)
+
+## Logit scale of mean abundance 
+eta <- logit(mu)
+
+## Distance Matrix
+D=matrix(c(0,1,2,3,4,1,0,2,3,4,2,2,0,3,4,3,3,3,0,4,4,4,4,4,0),ncol=5)
+colnames(D)=rownames(D)=LETTERS[1:5]
+print("--- Distance Matrix ---")
+print(D)
+
+## An orthogonal projection matrix
+J <- diag(rep(1, p)) -  1/p * matrix(1, p, p)
+
+## eta_B
+eta_B <- eta %*% J
+mu_eta_B <- expit(eta_B)
+
+## Expand alpha and beta parameter for calculating mean abundance matrix
+# Expand alpha across sites
+alpha_site <- alpha[rep(c(1 : q), each = r), ] 
+colnames(alpha_site)=LETTERS[1:5]
+# Expand beta across sites
+beta_site <- beta[rep(c(1 : q), each = r), ]
+```
+Based on David's experiment, here I adopt Scenario 1 where there are 6 communities. Specifically, com 1 and com 2 have the same diversity, com 3 and com 4 decreases in diversity compared with com 1, com 5 retains the same level diversity as com 1 but decreases in overall abundance, and com 6 increases in diversity compared with com 1. 
+
+### Data Generation
+
+```{r}
+## Abundance matrix
+abundance <- matrix(
+  rbeta(length(alpha_site), alpha_site, beta_site),
+  nrow = nrow(alpha_site),
+  dimnames = dimnames(alpha)
+)
+
+# Create community factor (1:q repeated r times each)
+com <- factor(rep(1:q, each=r))
+
+# Combine abundance matrix and community labels into a data frame
+yX <- data.frame(abundance, com)
+
+## Long format abundance data
+yX <- reshape(yX, direction = "long", varying = colnames(abundance),
+              v.names = "y", timevar = "sp")
+
+# Convert species column to factor
+yX$sp <- factor(yX$sp)
+```
+
+## Modelling
+
+```{r}
+model <- glmmTMB (y ~ com * sp,
+                  family = beta_family(),
+                  data = yX) 
+```
+
+## Model-based Diversity Assessment
+### Extract fixed
+```{r}
+## Estimates of fixed effects, eta_T
+eta_T_hat <- predict(model, 
+                   type = "link",
+                   re.form = NA)
+
+# Arrange eta_T_hat into a matrix
+eta_T_hat <- matrix(
+  as.numeric(eta_T_hat),
+  ncol = p,
+  byrow = FALSE
+)
+
+# Estimates of row centered fixed effects, eta_B 
+eta_B_hat <- eta_T_hat %*% J 
+```
+
+### Dose $\mu_B^{\top}\boldsymbol{D}\mu_B$ can measure diversity correctly? Is it consistent with Rao's Q and randomized Rao's Q?
+
+```{r}
+## True diversity for reference
+Div_TRUE <- rowSums(mu %*% D * mu)
+print("--- TRUE Diversity ---")
+print(Div_TRUE)
+
+## Model-based diversity
+Div_Model <- rowSums(mu_eta_B %*% D * mu_eta_B)
+print("--- Model ---")
+print(Div_Model)
+
+## Rao's Q
+Div_Rao <- rowSums((mu/apply(mu, 1, sum)) %*% D * (mu/apply(mu, 1, sum)))
+print("--- RaosQ ---")
+print(Div_Rao)
+
+## Randomized Rao's Q
+Div_rand_RaosQ <- randomization(
+  abundance = mu,
+  DM_phy_func = D
+)
+print("--- Randomized RaosQ ---")
+print(Div_rand_RaosQ)
+```
+The results show that $\mu_B^{\top}\boldsymbol{D}\mu_B$ correctly measure the trend of absolute diversities of coms 1 - 6 and is insensitive to variation in total abundance, and is consistent with rao's Q and randomized rao's Q. 
+
+### If the proposed measure of diversity estimator ($\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$) is consistent with Rao's Q and randomized Rao's Q?
+```{r}
+## produce boxplot for RaosQ
+RaosQ <- RaoQ(my.sample = abundance, DM = D)
+RaosQ_data <- data.frame(
+  group = com,
+  value = RaosQ
+)
+fig_raosQ <- Boxplot(
+  data = RaosQ_data,
+  group_levels = c(
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+    ),
+    ylab = "Rao's Q")
+fig_raosQ
+
+## Produce boxplot for randomized RaosQ 
+RaosQ_rand <- randomization(
+  abundance = abundance,
+  DM_phy_func = D
+)
+
+# Combine randomized Rao's Q values with community groups.
+RaosQ_rand_data <- data.frame(
+  group = com,
+  value = RaosQ_rand
+)
+
+fig1 <- Boxplot(data = RaosQ_rand_data,
+                group_levels = c(
+       "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"),
+    ylab = "Randomized Rao's Q")
+fig1
+
+## Produce boxplot for model-based diversity in each com 
+# Model-based Diversity Assessment 
+mu_eta_B_u_hat <- expit(eta_B_hat) # Ask David if RR or RR %*% J here?
+Div_Model <-  rowSums(mu_eta_B_u_hat %*% D * mu_eta_B_u_hat)
+Div_Model_data <- data.frame(
+  group = com,
+  value = Div_Model
+)
+Boxplot(data = Div_Model_data,
+        group_levels = c(
+          '1',
+          '2',
+          '3',
+          '4',
+          '5',
+          '6'),
+        ylab = "mu_B^{T}Dmu_B"
+        )
+```
+
+The three biplots indicate that the proposed diversity measure estimator ($\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$) is consistent with randomized Rao's Q and inconsistent with rao's Q because rao's Q detects diversity difference between com 1 and com 5.
+
+## Conclusions
+
+In summary, for percentage cover data set, 
+
+(1) the proposed diversity measure $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ can measure the exact trend of absolute diversity and is insensitive to variation in total abundance when we are studying relative abundance.
+
+(2) $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ is consistent with Rao's Q and randomized Rao's Q.
+
+(3) The proposed measure of diversity estimator ($\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$) is consistent with randomized Rao's Q whereas is inconsistent with Rao's Q. 

@@ -22,14 +22,9 @@ library(ecostats)
 library(vegan)
 library(emmeans)
 library(rstatix)
-library(dplyr)
 library(multcompView)
 expit <- function (x){
   fun <- exp(x)/ (1 + exp(x))
-  return(fun)
-}
-logit <- function(x) {
-  fun <- log(x / (1 - x))
   return(fun)
 }
 source('../R/simulate_random_effects.R')
@@ -77,9 +72,9 @@ set.seed(123)
 ```
 
 ## Aims
-The document aims to apply the proposed model-based assessment of diversity on the percentage cover value (PCV) data set and check if the model-based estimation of diversity is consistent with randomized Rao's Q, which has been demonstrated that they are consistent in the simulation. 
+The document aims to apply the proposed model-based assessment of diversity on the percentage cover value (PCV) data set and compare the proposed approach with randomized Rao's Q. 
 
-In order to simplify the modelling the process, I keep the species whose absence rate is lower than $55\%$, so there are 12 out of 296 species are left.
+In order to simplify the modelling the process, I keep the species whose absence rate is lower than $55\%$, so there are 12 out of 296 species are left.   
 
 ## Data Pro-Processing
 ### Read raw data
@@ -152,8 +147,9 @@ my.sample.filtered <- my.sample %>%
     all_of(colnames(my.sample)[1:2]),
     all_of(species_to_keep)
   )
-
-
+# Concert to presence absence data set
+my.sample.filtered[, -c(1, 2)][my.sample.filtered[, -c(1, 2)] > 0] <- 1
+  
 # Species retained for the model.
 selected_species <- colnames(
   my.sample.filtered
@@ -182,12 +178,6 @@ yX[c("sp", "Site", "Community", "id")] <-
     yX[c("sp", "Site", "Community", "id")],
     factor
   )
-
-# Convert percentage cover to proportions.
-yX$y <- yX$y / 100
-
-# ordBeta requires values strictly between 0 and 1.
-yX$y[yX$y >= 1] <- 0.9999
 ```
 
 
@@ -225,7 +215,7 @@ VC_phy_func_J <- J %*%
 V_J <- eigen(VC_phy_func_J)$vectors
 D_J <- eigen(VC_phy_func_J)$values
 ```
-The reason we are interested into $\boldsymbol{V}_J$ is that the column space of $\boldsymbol{V}_J$ strategically represents $\boldsymbol{R}^{p}$ as $\boldsymbol{1}^{\perp} \oplus \boldsymbol{1}$, where the former is the relative abundance space and latter is the total abundance space. This provides a way of studying relative abundance, which is abundance limited within space $\boldsymbol{1}^{\perp}$. 
+$\boldsymbol{V}_J$ is the eigenvector matrix of $\boldsymbol{S}_J$. Column space of $\boldsymbol{V}_J$ strategically represents $\boldsymbol{R}^{p}$ as $\boldsymbol{1}^{\perp} \oplus \boldsymbol{1}$, where the former is the relative abundance space and latter is the total abundance space.
 
 ## Modelling and Modelling Diagnosis
 ```{r}
@@ -238,12 +228,11 @@ model <- glmmTMB(
   y ~ sp +
     Community +
     sp:Community +
-    rr(sp + 0 | id, 2),
-  family = "ordbeta",
+    rr(sp + 0 | id , 2),
+  family = "binomial",
   REML = FALSE,
   data = yX
 )
-summary(model)
 ```
 
 ## Diversity Assessment
@@ -265,68 +254,30 @@ eta_T_hat <- matrix(
 eta_B_hat <- eta_T_hat %*% J 
 
 ##  Estimates of conditional random effects on y
-RR <- simulate_random_effects(model = model, uncertainty = TRUE)
+#RR <- simulate_random_effects(model = model, uncertainty = TRUE)
+RR <- matrix(0, nrow = nrow(eta_T_hat), ncol = p)
 ```
 
-### Is $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$ consistent with randomized Rao's Q? 
+### Dose $\hat{\mu}_B^{\top}D\hat{\mu}_B$ can measure diversity correctly? 
+
 ```{r}
+## Randomized Rao's Q diversity for reference
+# Ensure that the abundance matrix has the same species and ordering as the
+# phylogenetic distance matrix.
+
 abundance <- as.matrix(my.sample.filtered[
   ,
   colnames(DM_phy_func),
   drop = FALSE
 ])
-## Species richness
-SR <- specnumber(abundance)
-SR_data <- data.frame(
-  group = my.sample.filtered$Community,
-  value = SR
-)
-fig_SR <- Boxplot(
-  data = SR_data,
-  group_levels = c(
-      "LF",
-      "MF",
-      "SF",
-      "NE",
-      "SE",
-      "CG",
-      "OP",
-      "OA"
-    ),
-    ylab = "Species Richness")
-fig_SR
 
-## Rao's Q
-RaosQ <- RaoQ(my.sample= abundance, DM = DM_phy_func)
-RaosQ_data <- data.frame(
-  group = my.sample.filtered$Community,
-  value = RaosQ
-)
-fig_raosQ <- Boxplot(
-  data = RaosQ_data,
-  group_levels = c(
-      "LF",
-      "MF",
-      "SF",
-      "NE",
-      "SE",
-      "CG",
-      "OP",
-      "OA"
-    ),
-    ylab = "Rao's Q")
-fig_raosQ
-
-## Randomized Rao's Q diversity for reference
-# Ensure that the abundance matrix has the same species and ordering as the
-# phylogenetic distance matrix.
 # Calculate SES of Rao's Q using tip randomization.
 RaosQ_rand <- randomization(
   abundance = abundance,
   DM_phy_func = DM_phy_func
 )
 
-# Combine randomized Rao's Q values with community groups.
+# Combine Rao's Q values with community groups.
 RaosQ_rand_data <- data.frame(
   group = my.sample.filtered$Community,
   value = RaosQ_rand
@@ -348,51 +299,36 @@ fig1
 
 ## Produce boxplot for model-based diversity in each com 
 # Mean abundance scale
-mu_eta_B_u_hat <- expit(eta_B_hat + RR %*% J)
+mu_eta_B_u_hat <- expit(eta_B_hat + RR)
 
 p_mu <- make_div_boxplot(
   mu_eta_B_u_hat,
   ylab = expression(mu[B]^T * D * mu[B])
 )
 p_mu
+# Logit scale
+eta_B_u_hat <- eta_B_hat + RR # Question here : should I use RR %*% J or RR?
+
+p_eta <- make_div_boxplot(
+  eta_B_u_hat,
+  ylab = expression(eta[B]^T * D * eta[B])
+)
+p_eta
+
 ```
+The first biplot indicates a reference. The second plot shows boxplots $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$, which indicates an almost reversed trend with randomized Rao's Q. 
 
-We plot the boxplots plots for speciess richness and rao's Q to know our data sets.The boxplot describing species richness shows that species increases continously along gradients LF, MF, SF, NE, and then drops continuously through gradients SE, CG, OP, and OA.  The boxplot for rao's Q shows diversity keeps the same level along gradients LF, MF, SF, NE, and SE, and then drops and keeps the same along gradients CG, OP, OA.  
+In terms of $\boldsymbol{\boldsymbol{\eta}_B}^{\top}\boldsymbol{D}\boldsymbol{\eta}_B$, which I produced accidentally, it shows a similar trend with randomized Rao's Q. 
 
-We boxplot randomized Rao's Q as the expectation. It tells us the diversity is supposed to retain at a high level along LF, MF, SF, NE, SE, and then drops sharply at CG and keep the same level along CG, OP and OA. 
-
-The fourth boxplot shows the estimated diversity based on $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}$, which shows us an exactly reversed trend with Randomized rao's Q.
-
-<!-- ### What is the maunally calculated relative abundance and diversity based on it?   -->
-<!-- ```{r} -->
-<!-- abundance_mean <- aggregate( -->
-<!--   abundance/100, -->
-<!--   by = list(Community = my.sample.filtered$Community), -->
-<!--   FUN = mean, -->
-<!--   na.rm = TRUE -->
-<!-- ) -->
-<!-- RA_manual <- expit(logit(as.matrix(abundance_mean[, -1] + 0.000001)) %*% J) -->
-<!-- rownames(RA_manual) <- abundance_mean$Community -->
-<!-- colnames(RA_manual) <- rownames(DM_phy_func) -->
-<!-- Div_model_manual <- rowSums(RA_manual %*% DM_phy_func * RA_manual) -->
-<!-- order_community <- c("LF", "MF", "SF", "NE", "SE", "CG", "OP", "OA") -->
-<!-- Div_model_manual <- Div_model_manual[order_community] -->
-<!-- print(Div_model_manual) -->
-<!-- ``` -->
-<!-- ### Biplot -->
-<!-- ```{r} -->
-<!-- ## Produce a biplot based on estimate of \eta_T + u (Estimate \eta_T and u) -->
-<!-- eta_T_u_hat  <-  eta_T_hat + RR -->
-<!-- colnames(eta_T_u_hat) <- selected_species -->
-<!-- eta_T_u_hat <- eta_T_u_hat[, colnames(DM_phy_func)] -->
-<!-- eta_T_u_hat_data <- cbind('com' = my.sample.filtered$Community, eta_T_u_hat) -->
-<!-- Biplot(abundance = eta_T_u_hat_data, P = eigen(VC_phy_func_J)$vectors, plot_labs = labs( -->
-<!--   x = expression(v[J1]^T), -->
-<!--   y = expression(v[J2]^T) -->
-<!-- ), c = 7) -->
-<!-- ``` -->
-
-## Conclusion
-(1) The boxplot of randomized Rao's Q can be as our expectation not only because I have demonstrated it through simulated beta and Bernoulli data, but also the its boxplot is consistent with the boxplots of species richness  rao's Q.   
-
-(2) The boxplot shows that the proposed diversity estimator $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}$ can't get consistent results with randomized Rao's Q. The question that if the relative abundance is estimated properly in the percentage cover data set is worthwhile to explore.  
+### Biplot
+```{r}
+## Produce a biplot based on estimate of \eta_T + u (Estimate \eta_T and u)
+eta_T_u_hat  <-  eta_T_hat + RR
+colnames(eta_T_u_hat) <- selected_species
+eta_T_u_hat <- eta_T_u_hat[, colnames(DM_phy_func)]
+eta_T_u_hat_data <- cbind('com' = my.sample.filtered$Community, eta_T_u_hat)
+Biplot(abundance = eta_T_u_hat_data, P = eigen(VC_phy_func_J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T),
+  y = expression(v[J2]^T)
+), c = 7)
+```

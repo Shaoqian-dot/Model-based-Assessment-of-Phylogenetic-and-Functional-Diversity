@@ -15,6 +15,9 @@ library(ggplot2)
 source('../R/simulate_random_effects.R')
 source('../R/Boxplot.R')
 source('../R/Biplot_arrow.R')
+source('../R/RaoQ.R')
+source('../R/rand.RaoQ.fun.R')
+source('../R/randomization.R')
 set.seed(123)
 logit <- function (x){
   fun <- log(x / (1 - x))
@@ -27,8 +30,9 @@ expit <- function (x){
 ```
 ## Aims
 The document aims to check 
-(1) if $\hat{\mu}_B^{\top}D\hat{\mu}_B$ can measure diversity correctly? $\hat{\mu}_B = g^{-1}(\hat{\eta}_B)$. 
-(2) if we can project $\hat{\eta}_B$ onto the first two axes of $JSJ$ to visualize how relative abundance changes along gradients in a biplot. 
+(1) if $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ can measure diversity correctly? $\hat{\mu}_B = g^{-1}(\hat{\eta}_B)$. 
+(2) if $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ is consistent with Rao's Q and randomized Rao's Q? 
+(3) if we can visualize relative abundance ($\boldsymbol{\eta}_B$) of each community on a biplot to show their diversity changes along gradients by projecting $\boldsymbol{\eta}_T$ onto the first two axes of $JSJ$. 
 
 ## DGM
 
@@ -56,8 +60,12 @@ print(D)
 
 ## An orthogonal projection matrix
 J <- diag(rep(1, p)) -  1/p * matrix(1, p, p)
+
+## eta_B and mu_eta_B
+eta_B <- eta %*% J
+mu_eta_B <- expit(eta_B)
 ```
-Based on David's experiment, here I adopt Scenario 1 where there are 6 communities. Specifically, com 1 and com 2 have the same diversity, com 3 and com 4 decreases in diversity compared with com 1, com 5 retains the same level diversity as com 1 but decreases in overall abundance, and com 6 increases in diversity compared with com 1. 
+Based on David's experiment, here I adopt Scenario 1 where there are 6 communities. Specifically, com 1 and com 2 have the same diversity, com 3 and com 4 decreases in diversity compared with com 1, com 5 retains the same level of diversity as com 1 but decreases in overall abundance, and com 6 increases in diversity compared with com 1. 
 
 ### Produce mean abundances with correlations
 
@@ -133,25 +141,91 @@ eta_B_hat <- eta_T_hat %*% J
 RR <- simulate_random_effects(model = model, uncertainty = TRUE)
 ```
 
-### Dose $\hat{\mu}_B^{\top}D\hat{\mu}_B$ can measure diversity correctly? 
-
+### Does $\mu_B^{\top}D\mu_B$ can measure diversity correctly? 
 ```{r}
-## True diversity for reference
-Div_TRUE <- rowSums(expit(eta %*% J) %*% D * expit(eta %*% J))
+## TRUE diversity
+Div_TRUE <- rowSums(mu %*% D * mu)
+print("--- TRUE Diversity ---")
 print(Div_TRUE)
 
 ## Model-based diversity
-Div_Model <- rowSums(expit(unique(eta_B_hat)) %*% D * expit(unique(eta_B_hat)))
+Div_Model <- rowSums(mu_eta_B %*% D * mu_eta_B)
+print("--- Model ---")
+print(Div_Model)
+```
+The proposed diversity measure $\boldsymbol{\mu}^{\top}_B\boldsymbol{D}\boldsymbol{\mu}_B$ measures diversity correctly and is insensitive to variation in total abundance.
+
+### Is $\mu_B^{\top}D\mu_B$ and $\hat{\mu}_B^{\top}D\hat{\mu}_B$ consistent with Rao's Q and randomized Rao's Q?
+#### Is $\mu_B^{\top}D\mu_B$ consistent with Rao's Q and randomized Rao's Q?
+```{r}
+## Rao
+Div_Rao <- rowSums((mu/apply(mu, 1, sum)) %*% D * (mu/apply(mu, 1, sum)))
+print("--- RaosQ ---")
+print(Div_Rao)
+
+## Randomized Rao's Q
+Div_rand_RaosQ <- randomization(
+  abundance = mu,
+  DM_phy_func = D
+)
+print("--- Randomized RaosQ ---")
+print(Div_rand_RaosQ)
+
+## Model-based diversity
+print("--- Model ---")
 print(Div_Model)
 
+
 ```
-The results show the comparison of $\mu_B^{\top}D\mu_B$ and $\hat{\mu}_B^{\top}D\hat{\mu}_B$. Except for variation caused by estimation, $\hat{\mu}_B^{\top}D\hat{\mu}_B$ satisfies the expectation that diversity keeps the same between com 1 and com 2, decreases gradually through com 3 and com 4, keeps the same at com 5 with com 1 by accounting overall abundance change, and increases at com 6 compared with com 1.  
+$\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ is consistent with randomized Rao's Q and Randomized Rao's Q. 
 
-
+#### Is $\hat{\mu}_B^{\top}D\hat{\mu}_B$ consistent with Rao's Q and randomized Rao's Q?
 ```{r}
+## produce boxplot for RaosQ
+RaosQ <- RaoQ(my.sample = abundance, DM = D)
+RaosQ_data <- data.frame(
+  group = com,
+  value = RaosQ
+)
+fig_raosQ <- Boxplot(
+  data = RaosQ_data,
+  group_levels = c(
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+    ),
+    ylab = "Rao's Q")
+fig_raosQ
+
+## Produce boxplot for randomized RaosQ 
+RaosQ_rand <- randomization(
+  abundance = abundance,
+  DM_phy_func = D
+)
+
+# Combine randomized Rao's Q values with community groups.
+RaosQ_rand_data <- data.frame(
+  group = com,
+  value = RaosQ_rand
+)
+
+fig1 <- Boxplot(data = RaosQ_rand_data,
+                group_levels = c(
+       "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"),
+    ylab = "Randomized Rao's Q")
+fig1
+
 ## Produce boxplot for model-based diversity in each com 
 # Model-based Diversity Assessment 
-mu_eta_B_u_hat <- expit(eta_B_hat + RR) 
+mu_eta_B_u_hat <- expit(eta_B_hat + RR%*%J) 
 Div_Model <-  rowSums(mu_eta_B_u_hat %*% D * mu_eta_B_u_hat)
 Div_Model_data <- data.frame(
   group = com,
@@ -168,9 +242,20 @@ Boxplot(data = Div_Model_data,
         ylab = "mu_B^{T}Dmu_B"
         )
 ```
-The boxplots plot $\hat{\mu}_B D \hat{\mu}_B$ by adding samples from $u|y$, which shows the exact diversities as true diversities, which implies that $\hat{\mu}_B D \hat{\mu}_B$ can measure diversity when we are studying relative abundance.
 
-### Can we project $\hat{\eta}_B + \hat{u}|y$ onto the first two axes of $JSJ$ to visualize how relative abundance changes along gradients in a biplot?
+The boxplots plot ${\hat{\boldsymbol{\mu}}_B^{\top}}_i \boldsymbol{D} {\hat{\boldsymbol{\mu}}_B}_i$, $i = 1,\ldots,n$, where ${\hat{\mu}_B}_{ij} = g^{-1}({\hat{\eta}_B}_{ij} + {\hat{u}_B}_{ij}|y)$. 
+
+Those boxplots suggest that 
+
+Rao's Q mitigates difference between com 3, 4, 6 and com 1 because of big variance in each community, and it messes up the comparison between com 1 and com 5; 
+
+Randomized Rao's Q makes the difference between coms 3,4,6 and com 1 obvious by decreasing variance in each community and is insensitive to variation in total abudnace.
+
+The proposed approach shows a clear trend that com 2 retain the diversity of com 1,  com 3, 4 decreases, com 5 recover, and com 6 increases.    
+
+In summary, Rao's Q mitigates the expected difference in diversity and is sensitive to variation in total abundance; Randomized Rao's Q can detect difference between communities and is insensitive to variation in total abundance; The proposed is comparable to Randomized Rao's Q while show much more clear trend in diversity change between communities.
+
+### Can we visualize relative abundance of each community to show how diversity changes along gradients on a biplot and how the important species contributes to diversity for each community?
 
 ```{r}
 ## Produce a biplot based on \eta + u (true parameters)
@@ -195,12 +280,16 @@ Biplot(abundance = cbind(com, eta_T_hat_u), P = eigen(J %*% S %*% J)$vectors, pl
   y = expression(v[J2]^T * (hat(eta[B]) + u))
 ))
 ```
+The comparison of the above three biplots indicates that we correctly visualized relative abundance of the communities because the biplot generated based on estimates is consistent with the biplot generated based on real values of parameters. Specifically, the first biplot shows the projection of real parameters $\boldsymbol{\eta} + \boldsymbol{u}$ on $v_{J1}$ and $v_{J2}$, which is as the expectation. The second biplot shows the projection of estimates of $\boldsymbol{\eta} + \boldsymbol{u}$ on $v_J1$ and $v_J2$, where the estimator is  $\hat{\boldsymbol{\eta}}_T + \hat{\boldsymbol{u}}|y$. I guess the difference with the first biplot (the expectation) lies in the distribution of the points in each com, because we use a posterior distribution of $\boldsymbol{u}$ in the estimator whereas $\boldsymbol{u} \sim N(\boldsymbol{0}, \boldsymbol{S})$ on the first biplot. In order to check my guess, I produce the third biplot to project $\hat{\boldsymbol{\eta}}_T + u$ by changing  $\hat{\boldsymbol{u}}|y$ to $\boldsymbol{u}$ in $\hat{\boldsymbol{\eta}}_T + \hat{\boldsymbol{u}}|y$. The third biplot shows that I got an almost exact biplot with the first biplot, which validates my guess.
 
-The first biplot shows the projection of real parameters $\eta + u$ on $v_J1$ and $v_J2$, which is as the expectation.
-The second biplot shows the projection of estimates of $\eta + u$ on $v_J1$ and $v_J2$. The estimator is  $\hat{\eta}_T + \hat{u}|y$. The difference with expectation is the distribution of the points in each com, where we use a posterior distribution in the estimator. 
-In order to check if the difference of the two plots is caused by using $\hat{u}|y$ in $\hat{\eta}_T + \hat{u}|y$, I produce a biplot to project $\hat{\eta}_T + u$ by changing  $\hat{u}|y$ to $u$ in $\hat{\eta}_T + \hat{u}|y$, which is shown in the third biplot.
+The biplots show how diversity changes between com 1 and coms 2, 3, 4, 5, and 6. Specifically, com 4 is located at top-left direction of the origin; com 6 is located at the down-right direction of the origin; com 1, com 2, com 3, and com 5 are located at the top-right direction of the origin. Considering the truth that com 6 has the most diversity, com 4 has the lowest diversity, and coms 1, 2, 3, 5 are in the middle, we can say that diversity changes in a clockwise direction starting from com 4.      
 
-The arrows in the second biplot show the contribution of the species to the two factors: species 5 has positive contribution to $\boldsymbol{v}_{J1}$ and species 4 has negative contribution to $\boldsymbol{v}_{J2}$. Com 4 has low mean abundance of sp 4 and sp5, so it is located at top-left direction of the origin; com 6 has high abundance of sp 4 and sp5, so it is located at the down-right direction of the origin; com 1, com 2 and com 3 has low mean abundance of sp 4 and high mean abundance of sp 5, so they are located at the top-right direction of the origin. Since com 6 has the most diversity and com 4 has the lowest diversity, we can say the abundance of sp 4 and sp 5 contributes significantly to diversity.    
+How do the species contribute to diversity? First, we need to figure out how do the species are represented on the biplot. The arrows in the second plot represent all the 5 species, and their lengths and directions have meaning. For example, the arrow representing species 5 has the most length and is towards the top-right direction with  inclining towards the horizontal line, which suggests that species 5 has positive contribution to $\boldsymbol{v}_{J1}$ and $\boldsymbol{v}_{J2}$, where the contribution to $\boldsymbol{v}_{J1}$ is larger than $\boldsymbol{v}_{J2}$. And,    the arrow representing species 4 has the second most length and is towards the downwards direction with a little bit deviation to the right, which suggests that species 4 has negative contribution to $\boldsymbol{v}_{J2}$ and a little bit positive contribution to $\boldsymbol{v}_{J1}$. The arrows representing species 1, 2, and 3 are all towards the top-left direction with relatively shorter lengths, among which the arrow for species 3 is shorter than the species 1 and 2 and more inclines towards $\boldsymbol{v}_{J1}$, and the arrows for species 1 and 2 are almost the same in terms of length and direction, towards around the negative diagonal. That suggests that species 1, 2, 3 negatively contributes to $\boldsymbol{v}_{J1}$ and positively contributes to $\boldsymbol{v}_{J2}$, and species 3 is less important than species 1 and 2 in terms of contribution to $\boldsymbol{v}_{J1}$ and $\boldsymbol{v}_{J2}$ considering its shorter length.
+
+Considering $\boldsymbol{v}_{J1}$ and $\boldsymbol{v}_{J2}$ representing two important directions of abundance change in signalling diversity change, the contribution of the 5 species to $\boldsymbol{v}_{J1}$ and $\boldsymbol{v}_{J2}$ reveals how the amount of abundance of the five species causes high or low diversity. For example, com 4 is located at top-left direction of the origin, that means it has low mean abundance of sp 4 and sp5, high abundance of com 1,2,3. This is the reason why com 4 has the lowest diversity. And, com 6 is located at the down-right direction of the origin, which indicates that it has high abundance of sp 4 and sp5 and low abundance of species 1,2,3, causing com 6 having the highest abundance. Coms 1,2,3,5 are located at the upper direction origin but a little bit towards right, which indicates that they have high abundance of species 5, low abudance of species 4, and mild amount abundance of species 1,2 and 3, that is why they have middle diversity. 
+
+In summary, we can visualize how diversity changes along gradients on a biplot by plotting projected relative abundance of each community on $\boldsymbol{v}_{J1}$ and $\boldsymbol{v}_{J2}$, two directions which are important in signalling diversity change. The arrows representing species indicate high or low abundance of a spcecies in a community, revealing how the species contribute to the diversity in each community. 
+
 
 <!-- The function Biplot() projects $\eta_B$/$\mu_B$ along the first two eigenvectors of $S$ and $S_J$. Changing $S$ to $S_J$ is to determine if we want to exclude vector $\boldsymbol{1}$ in the projection space. The biplot shows that the way that the 6 communities are arranged in biplot is different when using $S$ and $S_J$. Specifically, for the case using $S$, where the projection space does not exclude vector$\boldsymbol{1}$, the plots shows that the correlation is almost parallel to $v_1$, and com 4 moves downwards directly along $v_2$ obviously, and com 6 hardly moves away from com 1; In terms of using $S_J$, namely the projection space excludes vector 1, com 4 (diversity decreases) and com 6 (diversity increases) moves towards different directions along the anti-diagonal, which may imply that diversity decreases towards unpper-left anti-diagonal and increases towards down-right anti-diagonal. Hence, the comparison of using $S$ or $S_J$ illustrates that projecting $\eta_B$/$\mu_B$ into the space excluding vector $1$ is more reasonable. In fact, including vector $\boldsymbol{1}$ is useless because there is no diversity change along $\boldsymbol{1}$ when we are studying relative diversity. -->
 
@@ -212,9 +301,14 @@ The arrows in the second biplot show the contribution of the species to the two 
 <!-- 1 A concern for the current design when $\#$ species is uneven numbers is the values of relative abundance at the logit scale and abundance scale are not convertible into each other. For example, for com 1, relative abundance at mean abundance scale is $(0.8, 0.2, 0.8, 0.2, 0.8)$; However, relative abundance at logit scale, if we have a sum-to-zero constraint on relative abundance on logit scale, is $(1.39, -1.39, 1.39, -1.39, 1.39) - 0.28 = (1.11, -1.63, 1.11, -1.63, 1.11)$ (0.28 is the vector average of $(1.39, -1.39, 1.39, -1.39, 1.39)$). Then, the transformed relative abundance from logit scale to abundance scale by $g^{-1}$ is $(0.75, 0.16, 0.75, 0.16, 0.75)$, which is not equal to $(0.8, 0.2, 0.8, 0.2, 0.8)$. My question is that if $\mu_B = g^{-1}(\eta_B)$ reflect the true relative abundance. The concern disappears when $\#$ sp is enven number because relative abundance we design at logit scale satisfies a sum-to-zero constrtaint. -->
 
 ## Conclusions
+Based on our analysis, we conclude 
 
-(1) $\hat{\mu}_B^{\top}D\hat{\mu}_B$ can measure diversity correctly. 
-(2) We can project $\hat{\eta}_B$ onto the first two axes of $JSJ$ to visualize how relative abundance changes along gradients in a biplot.
+(1) We proposed a diversity measure $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$, which can measure absolute diversity trend correctly unless we are studying relative abundance. 
 
+(2) We can estimate the proposed diversity measure using model-based approach by $\hat{\boldsymbol{\mu}}_B = g^{-1}(\boldsymbol{\eta}_B + \hat{\boldsymbol{u}}_B|y)$. 
+
+(3) The proposed approach is consistent with randomized Rao's Q and shows a much more clear trend of absolute diversity change.
+
+(4) Under the model-based framework, we can visualize how diversity changes along environmental gradients and how the species contribute to diversity.
 <!-- 3 For determining projecting $\eta_B$ or $\mu_B$, there is no big difference either projecting $\eta_B$ or $\mu_B$. -->
 
