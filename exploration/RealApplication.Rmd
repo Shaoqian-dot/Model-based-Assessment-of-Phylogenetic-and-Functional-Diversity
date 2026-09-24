@@ -135,10 +135,10 @@ zero_prop <- colMeans(
   na.rm = TRUE
 )
 
-my.sample.filtered <- my.sample %>%
-  select(
-    where(~ TRUE)
-  )
+# my.sample.filtered <- my.sample %>%
+#   select(
+#     where(~ TRUE)
+#   )
 
 # Apply the occurrence filter only to species columns.
 species_columns <- colnames(my.sample)[-c(1, 2)]
@@ -205,6 +205,7 @@ subtree_plot$tip.label <- paste0("sp", seq_along(subtree_plot$tip.label))
 plot(subtree_plot)
      
 # Phylogenetic distance matrix.
+# The order of species in DM_phy_func is the same as the order of species in subtree, and the order corresponds to sp1, sp2, sp3,...,sp12.
 DM_phy_func <- cophenetic.phylo(subtree)
 
 
