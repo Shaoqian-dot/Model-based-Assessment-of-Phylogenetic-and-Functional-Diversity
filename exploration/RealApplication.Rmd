@@ -236,7 +236,7 @@ The reason we are interested into $\boldsymbol{V}_J$ is that the column space of
 # model <- e$fit_Model_5
 
 model <- glmmTMB(
-  y ~ sp +
+  y ~ (1 | Site) + sp +
     Community +
     sp:Community +
     rr(sp + 0 | id, 2),
@@ -364,34 +364,110 @@ We boxplot randomized Rao's Q as the expectation. It tells us the diversity is s
 
 The fourth boxplot shows the estimated diversity based on $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}$, which shows us an exactly reversed trend with Randomized rao's Q.
 
-<!-- ### What is the maunally calculated relative abundance and diversity based on it?   -->
-<!-- ```{r} -->
-<!-- abundance_mean <- aggregate( -->
-<!--   abundance/100, -->
-<!--   by = list(Community = my.sample.filtered$Community), -->
-<!--   FUN = mean, -->
-<!--   na.rm = TRUE -->
-<!-- ) -->
-<!-- RA_manual <- expit(logit(as.matrix(abundance_mean[, -1] + 0.000001)) %*% J) -->
-<!-- rownames(RA_manual) <- abundance_mean$Community -->
-<!-- colnames(RA_manual) <- rownames(DM_phy_func) -->
-<!-- Div_model_manual <- rowSums(RA_manual %*% DM_phy_func * RA_manual) -->
-<!-- order_community <- c("LF", "MF", "SF", "NE", "SE", "CG", "OP", "OA") -->
-<!-- Div_model_manual <- Div_model_manual[order_community] -->
-<!-- print(Div_model_manual) -->
-<!-- ``` -->
-<!-- ### Biplot -->
-<!-- ```{r} -->
-<!-- ## Produce a biplot based on estimate of \eta_T + u (Estimate \eta_T and u) -->
-<!-- eta_T_u_hat  <-  eta_T_hat + RR -->
-<!-- colnames(eta_T_u_hat) <- selected_species -->
-<!-- eta_T_u_hat <- eta_T_u_hat[, colnames(DM_phy_func)] -->
-<!-- eta_T_u_hat_data <- cbind('com' = my.sample.filtered$Community, eta_T_u_hat) -->
-<!-- Biplot(abundance = eta_T_u_hat_data, P = eigen(VC_phy_func_J)$vectors, plot_labs = labs( -->
-<!--   x = expression(v[J1]^T), -->
-<!--   y = expression(v[J2]^T) -->
-<!-- ), c = 7) -->
-<!-- ``` -->
+### What is the distribution of abundnace across species at each community?
+```{r}
+# Order of communities
+community_order <- c("LF", "MF", "SF", "NE", "SE", "CG", "OP", "OA")
+# Order of species
+sp_order <- colnames(DM_phy_func)
+# Prepare data
+yX_plot <- yX %>%
+  mutate(
+    Community = factor(Community, levels = community_order),
+    sp = factor(sp, levels = sp_order, labels = paste0('sp', 1 : p)),
+    y_adj = ifelse(y == 0, 0.0001, y),
+    logit_y = qlogis(y_adj)
+  )
+
+# Prodoce boxplots
+attach(yX_plot)
+for (i in 1 : 8){
+  Com_aim <- community_order[i]
+  boxplot(logit_y ~ sp, data = yX_plot[Community == Com_aim, ],
+        main = paste0('Community', Com_aim))
+}
+detach(yX_plot)
+```
+
+```{r}
+order_community <- c("LF", "MF", "SF", "NE", "SE", "CG", "OP", "OA")
+abundance_PCV <- abundance/100
+abundance_PCV_adj <- abundance_PCV
+abundance_PCV_adj[abundance_PCV == 0] <- 0.0001
+abundance_PCV_adj[abundance_PCV >= 1] <- 0.9999
+
+logit_Abund <- data.frame(
+  Community = my.sample.filtered$Community,
+ logit(abundance_PCV_adj) 
+)
+
+logit_TAbund <- aggregate(
+  logit_Abund[, -1],
+  by = list(Community = my.sample.filtered$Community),
+  FUN = mean,
+) 
+logit_TAbund <- logit_TAbund %>%
+  arrange(match(Community, order_community ))
+logit_RAbund <- data.frame(
+  Community = logit_TAbund$Community,
+  as.matrix(logit_TAbund[, -1]) %*% J
+)
+RAbund <- aggregate(
+  logit_RAbund[, -1],
+  by = list(Community = logit_RAbund$Community),
+  FUN = expit
+)
+colnames(RAbund)[-1] <- sp_order
+RAbund_M <- as.matrix(RAbund[, -1])
+rownames(RAbund_M) <- community_order
+Div_model_manual <- rowSums(RAbund_M %*% DM_phy_func * RAbund_M)
+print(Div_model_manual)
+
+# Boxplot
+community_mean <- logit_Abund %>%
+  group_by(Community) %>%
+  summarise(
+    mean_abundance = mean(
+      as.matrix(pick(everything())),
+      na.rm = TRUE
+    )
+  )
+community_mean <- community_mean %>%
+  arrange(match(Community, order_community))
+
+logit_Abund_centered <- logit_Abund %>%
+  left_join(community_mean, by = "Community") %>%
+  mutate(
+    across(
+      -c(Community, mean_abundance),
+      ~ .x - mean_abundance
+    )
+  ) %>%
+  select(-mean_abundance)
+
+Abund_centered <- data.frame(
+  Community = my.sample.filtered$Community,
+  expit(logit_Abund_centered[, -1])
+)
+# Produce boxplot
+fig_mannual <- make_div_boxplot(
+  as.matrix(Abund_centered[, -1]),
+  ylab = expression(mu[B]^T * D * mu[B])
+)
+fig_mannual
+```
+### Biplot
+```{r}
+## Produce a biplot based on estimate of \eta_T + u (Estimate \eta_T and u)
+eta_T_u_hat  <-  eta_T_hat + RR
+colnames(eta_T_u_hat) <- selected_species
+eta_T_u_hat <- eta_T_u_hat[, colnames(DM_phy_func)]
+eta_T_u_hat_data <- cbind('com' = my.sample.filtered$Community, eta_T_u_hat)
+Biplot(abundance = eta_T_u_hat_data, P = eigen(VC_phy_func_J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T),
+  y = expression(v[J2]^T)
+), c = 7)
+```
 
 ## Conclusion
 (1) The boxplot of randomized Rao's Q can be as our expectation not only because I have demonstrated it through simulated beta and Bernoulli data, but also the its boxplot is consistent with the boxplots of species richness  rao's Q.   
