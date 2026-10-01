@@ -1,0 +1,328 @@
+---
+title: "Diversity Check_Absent Species"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+params:
+  model:
+    value: 1
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+library(mvtnorm)
+library(glmmTMB)
+library(magrittr)
+library(rstatix)
+library(ggplot2)
+source('../R/simulate_random_effects.R')
+source('../R/Boxplot.R')
+source('../R/Biplot_arrow.R')
+source('../R/RaoQ.R')
+source('../R/rand.RaoQ.fun.R')
+source('../R/randomization.R')
+source('../R/fit_model_current2.R')
+set.seed(123)
+logit <- function (x){
+  fun <- log(x / (1 - x))
+  return(fun)
+}
+expit <- function (x){
+  fun <- exp(x)/ (1 + exp(x))
+  return(fun)
+}
+```
+
+## Aims
+
+In this document, we aim to pinpoint the issue of the proposed diversity measure, $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$, when some species are have low abundance or almost absent at certain communities, and explore some potential solutions, including
+
+(1) modifying the models by including row effects, 
+
+(2) modifying the model by putting unimportant species effects into random effects, 
+
+(3) and explore another measure $(\hat{\boldsymbol{\mu}}^{\top}/\sum \mu_j)\boldsymbol{D}(\hat{\boldsymbol{\mu}}/\sum \mu_j)$.
+
+
+## DGM
+
+### Set up parameters
+```{r}
+r <- 128 # sample size in each com
+p <- 5 # the number of species
+q <- 6 # the number of communities
+## Mean abundance
+mu_com5 <- expit(-log(2) + c(log(4), log(1 / 10000), log(4), log(1 / 10000), log(4)))
+mu=matrix(c(0.8,0.0001,0.8,0.0001,0.8,0.0001,0.8,0.8,0.0001,0.8,0.8,0.8,0.0001,0.0001,0.8,0.8,0.8,0.8,0.0001,0.0001, mu_com5, 0.8, 0.0001, 0.0001, 0.8, 0.8),ncol=6)
+rownames(mu)=LETTERS[1:5]
+colnames(mu)=1:q
+mu <- t(mu)
+print(mu)
+
+## Logit scale of mean abundance 
+eta <- logit(mu)
+print(eta)
+
+
+## Distance Matrix
+D=matrix(c(0,1,2,3,4,1,0,2,3,4,2,2,0,3,4,3,3,3,0,4,4,4,4,4,0),ncol=5)
+colnames(D)=rownames(D)=LETTERS[1:5]
+print(D)
+
+## An orthogonal projection matrix
+J <- diag(rep(1, p)) -  1/p * matrix(1, p, p)
+
+## eta_B and mu_eta_B
+eta_B <- eta %*% J
+mu_eta_B <- expit(eta_B)
+
+## mu_eta
+mu_eta <- expit(eta)
+```
+
+### Produce mean abundances with correlations
+
+```{r}
+## Mean abundance matrix
+# Expand mu across sites
+mu_site <- mu[rep(c(1 : q), each = r), ] 
+
+# Calculate variance and covariance matrix of u
+S <- max(D) - D 
+mean <- rep(0, p)
+sigma <- S
+
+# Generate r * p multivariate normal samples
+resi_corr <- rmvnorm(n = r * q, mean = mean, sigma = sigma) 
+
+# Linear predictors 
+eta_u_site <- logit(mu_site) + resi_corr
+
+# Mean abundance matrix with correlations
+mu_eta_u_site <- expit(eta_u_site)
+```
+I set the similarity matrix $S$ as the variance-covariance matrix of $u$, which induces correlations for multivariate GLM.
+
+### Data Generation
+
+```{r}
+## Abundance matrix
+abundance <- mu_eta_u_site
+abundance[] <- rbinom(length(mu_eta_u_site), size = 1, prob = mu_eta_u_site)
+
+# Create community factor (1:q repeated r times each)
+com <- factor(rep(1:q, each=r))
+
+# Combine abundance matrix and community labels into a data frame
+yX <- data.frame(abundance, com)
+
+## Long format abundance data
+yX <- reshape(yX, direction = "long", varying = colnames(abundance),
+              v.names = "y", timevar = "sp")
+
+# Convert species column to factor
+yX$sp <- factor(yX$sp)
+yX$id <- factor(yX$id)
+```
+
+## Modelling
+
+```{r}
+# model_id <- params$model
+ model_id <- 3
+if (model_id == 1) {
+  model <- glmmTMB (y ~ com * sp + rr(sp + 0 | id, 2),
+                  family = 'binomial',
+                  data = yX)
+} else if (model_id == 2) {
+  model <- glmmTMB (y ~  id + com * sp + rr(sp + 0 | id, 2),
+                  family = 'binomial',
+                  data = yX)
+} else if (model_id == 3) {
+  model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
+                     yX = yX, P_J = eigen(J %*% S %*% J)$vectors, 
+                     val_num.eig = 2, Distribution = 'binomial', null = FALSE, p = p)$fit
+}
+```
+
+## Model-based Diversity Assessment
+### Extract fixed and random effects
+```{r}
+## Estimates of fixed effects, eta_T
+eta_T_hat <- predict(model, 
+                   type = "link",
+                   re.form = NA)
+
+eta_T_u_NoUntain_hat <- predict(model, 
+                   type = "link",
+                   re.form = NULL)
+eta_T_u_NoUntain_hat <- matrix(
+  as.numeric(eta_T_u_NoUntain_hat),
+  ncol = p,
+  byrow = FALSE
+)
+# Arrange eta_T_hat into a matrix
+eta_T_hat <- matrix(
+  as.numeric(eta_T_hat),
+  ncol = p,
+  byrow = FALSE
+)
+
+# Estimates of row centered fixed effects, eta_B 
+eta_B_hat <- eta_T_hat %*% J 
+
+##  Estimates of conditional random effects on y
+RR <- simulate_random_effects(model = model, uncertainty = TRUE)
+eta_T_u_hat <- eta_T_u_NoUntain_hat + RR
+```
+
+### Does $\boldsymbol{\mu}_B^{\top}D\boldsymbol{\mu}_B$ or $\boldsymbol{\mu}_{Rao}^{\top}D\boldsymbol{\mu}_{Rao}$ can measure diversity correctly? 
+```{r}
+## TRUE diversity
+Div_TRUE <- rowSums(mu %*% D * mu)
+print("--- TRUE Diversity ---")
+print(Div_TRUE)
+
+## Model-based diversity
+### mu_B
+Div_Model <- rowSums(mu_eta_B %*% D * mu_eta_B)
+print("--- Model mu_B ---")
+print(Div_Model)
+
+### mu_Rao
+Div_Model_Rao <- rowSums((mu_eta / apply(mu_eta, 1, sum)) %*% D * (mu_eta / apply(mu_eta, 1, sum)))
+print("--- Model mu_Rao ---")
+print(Div_Model_Rao)
+```
+
+### Is $\mu_B^{\top}D\mu_B$ and $\hat{\mu}_B^{\top}D\hat{\mu}_B$ consistent with Rao's Q and randomized Rao's Q?
+#### Is $\mu_B^{\top}D\mu_B$ consistent with Rao's Q and randomized Rao's Q?
+```{r}
+## Rao
+Div_Rao <- rowSums((mu/apply(mu, 1, sum)) %*% D * (mu/apply(mu, 1, sum)))
+print("--- RaosQ ---")
+print(Div_Rao)
+
+## Randomized Rao's Q
+Div_rand_RaosQ <- randomization(
+  abundance = mu,
+  DM_phy_func = D
+)
+print("--- Randomized RaosQ ---")
+print(Div_rand_RaosQ)
+
+## Model-based diversity
+### mu_B
+print("--- Model mu_B ---")
+print(Div_Model)
+
+### mu_Rao
+print("--- Model mu_Rao ---")
+print(Div_Model_Rao)
+```
+#### Is $\hat{\mu}_B^{\top}D\hat{\mu}_B$ or $\hat{\mu}_{Rao}^{\top}D\hat{\mu}_{Rao}$  consistent with Rao's Q and randomized Rao's Q?
+```{r}
+## produce boxplot for RaosQ
+RaosQ <- RaoQ(my.sample = abundance, DM = D)
+RaosQ_data <- data.frame(
+  group = com,
+  value = RaosQ
+)
+fig_raosQ <- Boxplot(
+  data = RaosQ_data,
+  group_levels = c(
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+    ),
+    ylab = "Rao's Q")
+fig_raosQ
+
+## Produce boxplot for randomized RaosQ 
+RaosQ_rand <- randomization(
+  abundance = abundance,
+  DM_phy_func = D
+)
+
+# Combine randomized Rao's Q values with community groups.
+RaosQ_rand_data <- data.frame(
+  group = com,
+  value = RaosQ_rand
+)
+
+fig1 <- Boxplot(data = RaosQ_rand_data,
+                group_levels = c(
+       "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"),
+    ylab = "Randomized Rao's Q")
+fig1
+
+## Produce boxplot for model-based diversity in each com 
+# Model-based Diversity Assessment mu_B
+mu_eta_B_u_hat <- expit(eta_T_u_hat %*% J) 
+Div_Model <-  rowSums(mu_eta_B_u_hat %*% D * mu_eta_B_u_hat)
+Div_Model_data <- data.frame(
+  group = com,
+  value = Div_Model
+)
+Boxplot(data = Div_Model_data,
+        group_levels = c(
+          '1',
+          '2',
+          '3',
+          '4',
+          '5',
+          '6'),
+        ylab = "mu_B^{T}Dmu_B"
+        )
+# Model-based Diveristy Assessnebt mu_Rao
+mu_eta_u_hat <- expit(eta_T_hat + RR %*% J)
+Div_Model_Rao <-  rowSums(mu_eta_u_hat %*% D * mu_eta_u_hat)
+Div_Model_Rao_data <- data.frame(
+  group = com,
+  value = Div_Model_Rao
+)
+Boxplot(data = Div_Model_Rao_data,
+        group_levels = c(
+          '1',
+          '2',
+          '3',
+          '4',
+          '5',
+          '6'),
+        ylab = "mu_Rao^{T}Dmu_Rao"
+        )
+```
+
+### Can we visualize relative abundance of each community to show how diversity changes along gradients on a biplot and how the important species contributes to diversity for each community?
+
+```{r}
+## Produce a biplot based on \eta + u (true parameters)
+Biplot(abundance = cbind(com, eta_u_site), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T * eta[B]),
+  y = expression(v[J2]^T * eta[B])
+), c = 5)
+
+## Produce a biplot based on estimate of \eta_B + u (Estimate \eta_B and u)
+eta_T_u_hat  <-  eta_T_hat + RR
+colnames(eta_T_u_hat) <- LETTERS[1:5]
+Biplot(abundance = cbind(com, eta_T_u_hat), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T * (hat(eta[B]) + hat(u) * "|" * y)),
+  y = expression(v[J2]^T * (hat(eta[B]) + hat(u) * "|" * y))
+), c = 5)
+
+## Produce biplot to project \eta_B_hat + u (Only estimate \eta_B).
+eta_T_hat_u <- eta_T_hat + resi_corr
+colnames(eta_T_hat_u) <- LETTERS[1:5]
+Biplot(abundance = cbind(com, eta_T_hat_u), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T * (hat(eta[B]) + u)),
+  y = expression(v[J2]^T * (hat(eta[B]) + u))
+))
+```

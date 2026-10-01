@@ -1,0 +1,395 @@
+---
+title: "Diversity Check_Absent Species"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+params:
+  model:
+    value: 1
+---
+
+```{r setup, include=FALSE}
+#rm(list = ls())
+library(mvtnorm)
+library(glmmTMB)
+library(magrittr)
+library(rstatix)
+library(ggplot2)
+library(dplyr)
+source('../R/simulate_random_effects.R')
+source('../R/Boxplot.R')
+source('../R/Biplot_arrow.R')
+source('../R/RaoQ.R')
+source('../R/rand.RaoQ.fun.R')
+source('../R/randomization.R')
+source('../R/fit_model_current2.R')
+source('../R/get_num.eig.R')
+set.seed(123)
+logit <- function (x){
+  fun <- log(x / (1 - x))
+  return(fun)
+}
+expit <- function (x){
+  fun <- exp(x)/ (1 + exp(x))
+  return(fun)
+}
+```
+
+## Aims
+
+In this document, we aim to pinpoint the issue of the proposed diversity measure, $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$, when some species are have extremely low rate of presence or totally absent at certain communities, and explore some potential solutions, including
+
+(1) modifying the model by including row effects, 
+
+(2) modifying the model by putting unimportant species effects to PD/FD measuring into random effects, 
+
+(3) and explore another measure $\boldsymbol{\mu}_{\text{Rao}}^{\top}\boldsymbol{D}\boldsymbol{\mu}_{\text{Rao}}$ ($\boldsymbol{\mu}_{\text{Rao}} = \boldsymbol{\mu}/\sum \mu_j$).
+
+I present the results into 2 documents, named 'Model2.html' for row effect model and 'Model3.html' for the model putting part of the species into random effects. Each document investigates both of the measures $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ and $\boldsymbol{\mu}_{\text{Rao}}^{\top}\boldsymbol{D}\boldsymbol{\mu}_{\text{Rao}}$.   
+
+## DGM
+
+### Set up parameters
+```{r}
+r <- 128 # sample size in each com
+p <- 5 # the number of species
+q <- 6 # the number of communities
+
+# Phylogenetics
+## Distance matrix
+D=matrix(c(0,1,2,3,4,1,0,2,3,4,2,2,0,3,4,3,3,3,0,4,4,4,4,4,0),ncol=5)
+colnames(D)=rownames(D)=LETTERS[1:5]
+print("--- Distance Matrix ---")
+print(D)
+
+## An orthogonal projection matrix
+J <- diag(rep(1, p)) -  1/p * matrix(1, p, p)
+
+# Abundance Setting
+## Mean abundance
+mu_com5 <- expit(-log(2) + c(log(4), log(1 / 10000), log(4), log(1 / 10000), log(4)))
+MeanAund_Absent <- expit(log(1 / 10000))
+mu=matrix(c(0.8,MeanAund_Absent,0.8,MeanAund_Absent,0.8,
+            MeanAund_Absent,0.8,0.8,MeanAund_Absent,0.8,
+            0.8,0.8,MeanAund_Absent,MeanAund_Absent,0.8,
+            0.8,0.8,0.8,MeanAund_Absent,MeanAund_Absent, 
+            mu_com5, 
+            0.8, MeanAund_Absent, MeanAund_Absent, 0.8, 0.8),
+          ncol=6)
+rownames(mu)=LETTERS[1:5]
+colnames(mu)=1:q
+print("--- mu ---")
+mu <- t(mu)
+print(mu)
+
+## Logit scale of mean abundance 
+eta <- logit(mu)
+print("--- eta ---")
+print(eta)
+
+## eta_B and mu_eta_B
+eta_B <- eta %*% J
+mu_eta_B <- expit(eta_B)
+
+## mu_eta
+mu_eta <- expit(eta)
+```
+The design is to mimic the case where certain species are almost totally absent and keeps the PD along coms 1- 6 as before. Specifically, the lower mean abundance 0.2 is changed into an infinitesimal mean abundance; For com 5, we obtain it by subtracting com 1's overall abundance by  $\log(2)$.
+
+### Produce mean abundances with correlations
+
+```{r}
+## Expand mu across sites
+mu_site <- mu[rep(c(1 : q), each = r), ] 
+
+# Generate u
+## Set variance and covariance matrix of u
+S <- max(D) - D 
+mean <- rep(0, p)
+sigma <- S
+
+## Generate r * p multivariate normal samples
+resi_corr <- rmvnorm(n = r * q, mean = mean, sigma = sigma) 
+
+## Linear predictors across sites 
+eta_u_site <- logit(mu_site) + resi_corr
+
+## Mean abundance matrix with correlations
+mu_eta_u_site <- expit(eta_u_site)
+```
+I set the similarity matrix $S$ as the variance-covariance matrix of $u$, which induces correlations between species abundances.
+
+### Data Generation
+
+```{r}
+# Generate Presence/Absence Data
+## Generate Presence/Absence Matrix
+abundance <- mu_eta_u_site
+abundance[] <- rbinom(length(mu_eta_u_site), size = 1, prob = mu_eta_u_site)
+
+## Create community factor (1:q repeated r times each)
+com <- factor(rep(1:q, each=r))
+
+## Combine abundance matrix and community labels into a data frame
+Abund <- data.frame(abundance, com)
+
+## Long Format Presence/Absence Data
+yX <- reshape(Abund, direction = "long", varying = colnames(abundance),
+              v.names = "y", timevar = "sp")
+
+#### Convert species column to factor
+yX$sp <- factor(yX$sp)
+yX$id <- factor(yX$id)
+```
+
+## Modelling
+
+```{r}
+model_id <- params$model
+
+if (model_id == 1) {
+  model <- glmmTMB (y ~ com * sp + rr(sp + 0 | id, 2),
+                  family = 'binomial',
+                  data = yX)
+} else if (model_id == 2) {
+  model <- glmmTMB (y ~  id + com * sp + rr(sp + 0 | id, 2),
+                  family = 'binomial',
+                  data = yX)
+} else if (model_id == 3) {
+  num.eig <- get_num.eig(Methods = 'Method3', NA, D = diag(eigen(J %*% S %*% J)$values[1 : (p -1)]))
+  model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
+                     yX = yX, P_J = eigen(J %*% S %*% J)$vectors, 
+                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p)$fit
+}
+summary(model)
+```
+
+## Model-based Diversity Assessment
+### Extract fixed and random effects
+```{r}
+# Extract Fixed and Random Effects
+## Estimates of Fixed Effects plus Random Effects, eta_T_u_hat
+eta_T_u_hat <- predict(model, 
+                   type = "link",
+                   re.form = NULL)
+
+### Arrange eta_T_u_hat into a matrix
+eta_T_u_hat <- matrix(
+  as.numeric(eta_T_u_hat),
+  ncol = p,
+  byrow = FALSE
+)
+
+## Estimate uncertainty of u_hat
+uncertain <- simulate_random_effects(model = model, uncertainty = TRUE)
+```
+
+### Does $\boldsymbol{\mu}_B^{\top}D\boldsymbol{\mu}_B$ or $\boldsymbol{\mu}_{Rao}^{\top}D\boldsymbol{\mu}_{Rao}$ measure diversity correctly? 
+```{r}
+# TRUE Diversity
+Div_TRUE <- rowSums(mu %*% D * mu)
+print("--- TRUE Diversity ---")
+print(Div_TRUE)
+
+# Model-based diversity
+## mu_B
+Div_Model <- rowSums(mu_eta_B %*% D * mu_eta_B)
+print("--- Model mu_B ---")
+print(Div_Model)
+
+## mu_Rao
+Div_Model_Rao <- rowSums((mu_eta / apply(mu_eta, 1, sum)) %*% D * (mu_eta / apply(mu_eta, 1, sum)))
+print("--- Model mu_Rao ---")
+print(Div_Model_Rao)
+```
+
+Yes, the results show that both $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ and $\boldsymbol{\mu}_{\text{Rao}}^{\top}\boldsymbol{D}\boldsymbol{\mu}_{\text{Rao}}$ can measure the exact trend of absolute PD of coms 1 - 6, but only $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ is totally insensitive to variation in overall abundance.
+
+### Are $\mu_B^{\top}D\mu_B$ or $\hat{\mu}_{Rao}^{\top}D\hat{\mu}_{Rao}$ and their estimators consistent with Rao's Q and randomized Rao's Q?
+#### Is $\mu_B^{\top}D\mu_B$ or $\hat{\mu}_{Rao}^{\top}D\hat{\mu}_{Rao}$ consistent with Rao's Q and randomized Rao's Q?
+```{r}
+# Rao
+## Rao
+Div_Rao <- rowSums((mu/apply(mu, 1, sum)) %*% D * (mu/apply(mu, 1, sum)))
+print("--- RaosQ ---")
+print(Div_Rao)
+
+## Randomized Rao's Q
+Div_rand_RaosQ <- randomization(
+  abundance = mu,
+  DM_phy_func = D
+)
+print("--- Randomized RaosQ ---")
+print(Div_rand_RaosQ)
+
+# Model-based Diversity
+## mu_B
+print("--- Model mu_B ---")
+print(Div_Model)
+
+## mu_Rao
+print("--- Model mu_Rao ---")
+print(Div_Model_Rao)
+```
+Yes. Both the two measures show the same trend of absolute diversities along coms 1 - 6 with Rao's Q and randomized Rao's Q. Furthermore, the results show that $\boldsymbol{\mu}_{\text{Rao}}^{\top}\boldsymbol{D}\boldsymbol{\mu}_{\text{Rao}}$ is completely the same as Rao's Q.
+
+#### Is $\hat{\mu}_B^{\top}D\hat{\mu}_B$ or $\hat{\mu}_{Rao}^{\top}D\hat{\mu}_{Rao}$ consistent with Rao's Q and randomized Rao's Q?
+```{r}
+# Produce Boxplot for RaosQ
+## Produce boxplot for raosQ
+RaosQ <- RaoQ(my.sample = abundance, DM = D)
+RaosQ_data <- data.frame(
+  group = com,
+  value = RaosQ
+)
+fig_raosQ <- Boxplot(
+  data = RaosQ_data,
+  group_levels = c(
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+    ),
+    ylab = "Rao's Q")
+fig_raosQ
+
+## Produce boxplot for randomized RaosQ 
+RaosQ_rand <- randomization(
+  abundance = abundance,
+  DM_phy_func = D
+)
+
+### Combine randomized Rao's Q values with community groups.
+RaosQ_rand_data <- data.frame(
+  group = com,
+  value = RaosQ_rand
+)
+
+fig1 <- Boxplot(data = RaosQ_rand_data,
+                group_levels = c(
+       "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"),
+    ylab = "Randomized Rao's Q")
+fig1
+
+# Produce Boxplot for Model-based Diversity in Each Community 
+## Model-based diversity assessment based on mu_B
+mu_eta_B_u_hat_uncertain <- expit((eta_T_u_hat + uncertain) %*% J) 
+Div_Model <-  rowSums(mu_eta_B_u_hat_uncertain %*% D * mu_eta_B_u_hat_uncertain)
+Div_Model_data <- data.frame(
+  group = com,
+  value = Div_Model
+)
+Boxplot(data = Div_Model_data,
+        group_levels = c(
+          '1',
+          '2',
+          '3',
+          '4',
+          '5',
+          '6'),
+        ylab = "mu_B^{T}Dmu_B"
+        )
+# Model-based diveristy assessnebt based on mu_Rao
+mu_eta_u_hat_uncertain <- expit(eta_T_u_hat + uncertain)
+Div_Model_Rao <-  rowSums((mu_eta_u_hat_uncertain / apply(mu_eta_u_hat_uncertain, 1, sum)) %*% D * (mu_eta_u_hat_uncertain / apply(mu_eta_u_hat_uncertain, 1, sum)))
+Div_Model_Rao_data <- data.frame(
+  group = com,
+  value = Div_Model_Rao
+)
+Boxplot(data = Div_Model_Rao_data,
+        group_levels = c(
+          '1',
+          '2',
+          '3',
+          '4',
+          '5',
+          '6'),
+        ylab = "mu_Rao^{T}Dmu_Rao"
+        )
+```
+
+For the model setting part of the species as random effects, 
+  
+  (1) in terms of $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$, it is consistent with Randomized Rao's Q and inconsistent with Rao's Q. Specifically, the results shows that com 5 has a different variation in Rao's Q compared with com 1, whereas the variation of com 5 in $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$ and randomized Rao's Q is the same as com 1.
+  
+  (2) in terms of $\hat{\boldsymbol{\mu}}_{\text{Rao}}^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_{\text{Rao}}$, it is consistent with Rao's Q and inconsistent with randomized Rao's Q. Specifically, the results shows that com 5 has a different variation in Rao's Q and in $\hat{\boldsymbol{\mu}}_{\text{Rao}}^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_{\text{Rao}}$  compared with com 1, whereas the variation of com 5 in randomized Rao's Q is the same as com 1.
+  
+  In conclusion, $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$ is consistent with randomized Rao's Q, and $\hat{\boldsymbol{\mu}}_{\text{Rao}}^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_{\text{Rao}}$ is consistent with Rao's Q.
+  
+### Can we visualize projected abundance at $\eta$ scale onto $\boldsymbol{v}_{J1}$ and $\boldsymbol{v}_{J2}$ to show how diversity changes along gradients on a biplot and how the species contributes to diversity within each community?
+
+```{r}
+## Produce a biplot based on \eta + u (true parameters)
+Biplot(abundance = cbind(com, eta_u_site), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T * eta[B]),
+  y = expression(v[J2]^T * eta[B])
+), c = 7.5)
+
+## Produce a biplot based on estimate of \eta_B + u (Estimate \eta_B and u with uncertainty)
+eta_T_u_hat_uncertain  <- eta_T_u_hat + uncertain
+colnames(eta_T_u_hat_uncertain) <- LETTERS[1:5]
+Biplot(abundance = cbind(com, eta_T_u_hat_uncertain), P = eigen(J %*% S %*% J)$vectors, plot_labs = labs(
+  x = expression(v[J1]^T * (hat(eta[B]) + hat(u) * "|" * y)),
+  y = expression(v[J2]^T * (hat(eta[B]) + hat(u) * "|" * y))
+), c = 7.5)
+```
+
+The second biplot shows that the model estimates make communities farther away from each other compared with the first biplot based on true values. That may suggest that the model estimates may not be very close to true values. 
+
+```{r}
+# Check Model Estimates
+eta_u_site_data <- data.frame(
+  com = com,
+  eta_u_site
+)
+
+eta_T_u_hat_data <- data.frame(
+  com = com,
+  eta_T_u_hat
+) 
+colnames(eta_T_u_hat_data)[-1] <- LETTERS[1:5]
+
+GroupMean_eta_u_site_data <- eta_u_site_data %>%
+  group_by(com) %>%
+  summarise(
+    across(
+      everything(),
+      ~ mean(.x, na.rm = TRUE)
+    )
+  )
+
+GroupMean_eta_T_u_hat_data <- eta_T_u_hat_data %>%
+  group_by(com) %>%
+  summarise(
+    across(
+      everything(),
+      ~ mean(.x, na.rm = TRUE)
+    )
+  )
+print("--- Community average of true values ---")
+print(GroupMean_eta_u_site_data)
+print("--- Community average of the model estimates ---")
+print(GroupMean_eta_T_u_hat_data)
+```
+
+Specifically, if we further loot at the averaged predictions of link at each community, the results show that we got bigger negative estimates and smaller positive estimates in general. That means the model-based estimates of $\eta + u$ tends to shrink towards zero, resulting in an underestimation of the magnitude of both positive and negative effects, except for the estimate of species E at com 4, which is far more lower estimate of -9.31.
+
+## Conslusions
+
+Under the simulated presence/absence data set where there are (almost) absent species at some communities, we got problematic estimates of $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ based on the model containing $\verb|sp : com|$ as fixed effects. We tried three solutions, involving modifying the model and investigating another measure $\boldsymbol{\mu}_{\text{Rao}}^{\top}\boldsymbol{D}\boldsymbol{\mu}_{\text{Rao}}$, and stored all of the results at two documents 'Model2.html' and 'Model3.html'.  
+
+We concluded that
+
+(1) $\boldsymbol{\mu}_{\text{Rao}}^{\top}\boldsymbol{D}\boldsymbol{\mu}_{\text{Rao}}$ is a model-based estimator of Rao's Q, which is sensitive to variation in overall abundance.
+
+(2) The model adding row effects fails to estimate $\boldsymbol{\mu}_B^{\top}\boldsymbol{D}\boldsymbol{\mu}_B$ properly.
+
+(3) The model setting part of the species as random effects works well in general in modelling the data set, but the estimates of $\eta + u$ tends to shrink towards zero, resulting in an underestimation of the magnitude of both positive and negative effects and farther away of communities on the biplot.  
+

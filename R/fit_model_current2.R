@@ -164,12 +164,12 @@ fit_model <- function(type, matrix_type, rr,
         family = Distribution,
         data = yX_tmp,
         REML=FALSE,
-        control = glmmTMBControl(start_method = list(method = 'res', jitter.sd = 0.2),
-                                 optCtrl = list(
-                                   eps = ,
-                                   iter.max = 1000,
-                                   eval.max = 1000
-                                 ))
+        # control = glmmTMBControl(start_method = list(method = 'res', jitter.sd = 0.2),
+        #                          optCtrl = list(
+        #                            eps = 1e-6,
+        #                            iter.max = 1000,
+        #                            eval.max = 1000
+        #                          ))
       ),
       warning = function(w) {
         warning_msgs <<- c(warning_msgs, conditionMessage(w))

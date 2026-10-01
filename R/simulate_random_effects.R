@@ -35,7 +35,8 @@ simulate_random_effects <- function(model, uncertainty = TRUE) {
       # Generate one random-effect vector
       RR[j, ] <- MASS::mvrnorm(
         n = 1,
-        mu = mu_j,
+        #mu = mu_j,
+        mu = rep(0, times = p),
         Sigma = Sigma_j
       )
       # Keep random-effect names

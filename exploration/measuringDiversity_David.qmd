@@ -1,0 +1,104 @@
+---
+title: "variants on Rao for measuring diversity"
+author: "David Warton"
+format: html
+editor: visual
+---
+
+## Setup - 5 species
+
+Here is the dissimilarity matrix I will use. 5 species, A and B are most closely related, D and E most distant.
+
+```{r}
+D=matrix(c(0,1,2,3,4,1,0,2,3,4,2,2,0,3,4,3,3,3,0,4,4,4,4,4,0),ncol=5)
+colnames(D)=rownames(D)=LETTERS[1:5]
+print(D)
+
+```
+
+and the corresponding similarity matrix:
+
+```{r}
+S=4-D
+print(S)
+```
+
+Consider two situations:
+
+### S1: Communities 1-2 most diverse
+
+```{r}
+mu=matrix(c(0.8,0.2,0.8,0.2,0.8,0.2,0.8,0.8,0.2,0.8,0.8,0.8,0.2,0.2,0.8,0.8,0.8,0.8,0.2,0.2,2/3,1/9,2/3,1/9,2/3),ncol=5)
+rownames(mu)=LETTERS[1:5]
+colnames(mu)=1:5
+print(mu)
+```
+
+This should be consistent with the structure of your simulations: I did the usual "swap mean" approach for communities 3 and 4 (swapping a more distant species in community 4, for a bigger change in diversity). For community 5 I halved the odds from community 1, so I reduced the linear predictor (log-odds) by log(2) for each species.
+
+### S2: Community 5 most diverse
+
+```{r}
+muC=1-mu
+muC[,5]=c(1/9,2/3,1/9,2/3,1/9)
+print(muC)
+```
+
+## Q1: Does using S in a quadratic form mess with the interpretation as diversity?
+
+### For scenario S1: Communities 1-2 most diverse
+
+```{r}
+print(diag(t(mu)%*%D%*%mu))
+print(diag(t(mu)%*%S%*%mu))
+```
+
+Rao's diversity gives something sensible, with Communities 1-2 being most diverse, and diversity decreases to 3 and then 4. Our method has it the wrong way around!
+
+In both cases, community 5 has less diversity. This was correctly identified by Rao's diversity. But this is a problem for our metric because it means we can't say it is negatively related to diversity - that is only true when we look at *relative* abundance!
+
+### For S2: Community 5 most diverse
+
+```{r}
+diag(t(muC)%*%D%*%muC)
+print(diag(t(muC)%*%S%*%muC))
+```
+
+Again Rao's diversity is the right way around and ours is not. Again we have a contradiction where community 5 has a smaller value than the others, so we can't claim our metric is negatively related to diversity, unless we have controlled for total abundance.
+
+## Q2: Does using linear predictor in a quadratic form mess with the interpretation as diversity?
+
+```{r}
+eta=log(mu)-log(1-mu)
+print(eta)
+etaC=log(muC)-log(1-muC)
+print(etaC)
+```
+
+### For scenario S1: Communities 1-2 most diverse
+
+```{r}
+print(diag(t(eta)%*%D%*%eta))
+print(diag(t(eta)%*%S%*%eta))
+```
+
+Rao's diversity is negative and ours is positive. However, the relative sizes are consistent with what we saw previously: they are correct for Rao but not for our metric.
+
+### For S2: Community 5 most diverse
+
+```{r}
+print(diag(t(etaC)%*%D%*%etaC))
+print(diag(t(etaC)%*%S%*%etaC))
+```
+
+Now we see a new problem: *both methods* give the same answers for S1 and S2. But the rank order of communities was supposed to change across these scenarios! (S1: Comm4\<Comm1; S2: Comm4\>Comm1). The reason this happened is that quadratic methods work on *magnitude* of vectors, but `eta` and `etaC` have the same magnitude for Comm1-4 (since `etaC[,1:4]=-eta[,1:4]`).
+
+## Summary: two limitations
+
+### Limitation 1: Replacing D with S messes things up unless we are dealing with relative abundance
+
+Hence this method has a strict requirement that it can only be applied to $\beta$ , where $\sum_j \beta_j=0$.
+
+### Limitation 2: Replacing $\mu$ with $\eta$ messes up directionality of diversity change
+
+Magnitude of our measure, applied to $\eta$, is larger when values of the linear predictor are farther from $0$. So these are meaningless on the absolute scale, we can only interpret changes in our measure as suggesting changes in diversity (without assigning a direction).
