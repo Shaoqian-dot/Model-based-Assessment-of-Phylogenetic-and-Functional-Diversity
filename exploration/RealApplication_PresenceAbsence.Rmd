@@ -23,6 +23,7 @@ library(vegan)
 library(emmeans)
 library(rstatix)
 library(multcompView)
+library(dplyr)
 expit <- function (x){
   fun <- exp(x)/ (1 + exp(x))
   return(fun)
@@ -34,6 +35,8 @@ source('../R/RaoQ.R')
 source('../R/rand.RaoQ.fun.R')
 source('../R/randomization.R')
 source(system.file("misc", "extract_rr.R", package = "glmmTMB"))
+source('../R/get_num.eig.R')
+source('../R/fit_model_current2.R')
 ## Function to produce boxplot for model-based diversity
 make_div_boxplot <- function(eta_B_u_hat, ylab) {
   
@@ -124,16 +127,11 @@ tree$tip.label <- tree_species
 ### Filter community data by removing rare species
 ```{r}
 # Keep species missing in less than rare_threshold of plots.
-zero_threshold <- 0.55
+zero_threshold <- 0.95
 zero_prop <- colMeans(
   my.sample == 0,
   na.rm = TRUE
 )
-
-my.sample.filtered <- my.sample %>%
-  select(
-    where(~ TRUE)
-  )
 
 # Apply the occurrence filter only to species columns.
 species_columns <- colnames(my.sample)[-c(1, 2)]
@@ -143,9 +141,9 @@ species_to_keep <- species_columns[
 ]
 
 my.sample.filtered <- my.sample %>%
-  select(
-    all_of(colnames(my.sample)[1:2]),
-    all_of(species_to_keep)
+  dplyr::select(
+    dplyr::all_of(colnames(my.sample)[1:2]),
+    dplyr::all_of(species_to_keep)
   )
 # Concert to presence absence data set
 my.sample.filtered[, -c(1, 2)][my.sample.filtered[, -c(1, 2)] > 0] <- 1
@@ -159,7 +157,7 @@ selected_species <- colnames(
 p <- length(selected_species)
 
 ```
-Species present more than 45% of all the plots are kept.
+Species present more than 5% ($494 \times 0.05 \approx 25$ plots) of all the plots are kept.
 
 ### Convert community data to long format
 ```{r}
@@ -178,6 +176,7 @@ yX[c("sp", "Site", "Community", "id")] <-
     yX[c("sp", "Site", "Community", "id")],
     factor
   )
+colnames(yX) <- c('site', 'com', 'sp', 'y', 'id')
 ```
 
 
@@ -200,10 +199,13 @@ DM_phy_func <- cophenetic.phylo(subtree)
 
 # Convert distance to a similarity-like matrix.
 VC_phy_func <- max(DM_phy_func) - DM_phy_func
+```
+$\boldsymbol{V}_J$ is the eigenvector matrix of $\boldsymbol{S}_J$. Column space of $\boldsymbol{V}_J$ strategically represents $\boldsymbol{R}^{p}$ as $\boldsymbol{1}^{\perp} \oplus \boldsymbol{1}$, where the former is the relative abundance space and latter is the total abundance space.
 
-
+## Modelling and Modelling Diagnosis
+### Modelling
+```{r}
 # Project the similarity matrix onto the centred subspace
-
 J <- diag(p) -
   (1 / p) * matrix(1, p, p)
 
@@ -214,25 +216,47 @@ VC_phy_func_J <- J %*%
 
 V_J <- eigen(VC_phy_func_J)$vectors
 D_J <- eigen(VC_phy_func_J)$values
+
+# Get the number of main directions in signalling PD/FD
+num.eig <- get_num.eig(Methods = 'Method3', NA, D = diag(eigen(J %*% VC_phy_func %*% J)$values[1 : (p -1)]))
+
+# Modelling
+model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
+                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
+                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p)$fit
+
+model_rowEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
+                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
+                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p,
+                     site = FALSE, row_effect = TRUE)$fit
+model_SiteEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
+                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
+                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p, site = FALSE, row_effect = FALSE)$fit
 ```
-$\boldsymbol{V}_J$ is the eigenvector matrix of $\boldsymbol{S}_J$. Column space of $\boldsymbol{V}_J$ strategically represents $\boldsymbol{R}^{p}$ as $\boldsymbol{1}^{\perp} \oplus \boldsymbol{1}$, where the former is the relative abundance space and latter is the total abundance space.
 
-## Modelling and Modelling Diagnosis
+### Model diagnosis
 ```{r}
-# e <- new.env()
-# load("C:/Users/huang/OneDrive - UNSW/PhD Project/Model contrasts/Simulation/Simulation with wide settings/Code refactoring/Model-based assessment of PD and FD/Real application/Model/workspace_20260419.RData", envir = e)
-# 
-# model <- e$fit_Model_5
+# Model Diagnosis
+res <- simulateResiduals(
+  fittedModel = model,   #Your glmmTMB object
+  n = 1000              # Normally in 500–1000
+) # when n = 10000, the qqplot becomes normal.
 
-model <- glmmTMB(
-  y ~ sp +
-    Community +
-    sp:Community +
-    rr(sp + 0 | id , 2),
-  family = "binomial",
-  REML = FALSE,
-  data = yX
-)
+# hist(qnorm(res$scaledResiduals))
+qqplot(rnorm(10000, 0, 1), qnorm(res$scaledResiduals))
+qqline(qnorm(res$scaledResiduals))
+
+# Transform residuals to the normal scale
+z <- qnorm(res$scaledResiduals)
+
+# Create the Q-Q plot
+qqnorm(z)
+
+# Add the reference line
+qqline(z, col = "red", lwd = 2)
+
+# Histogram of scaled residuals
+histogram(qnorm(res$scaledResiduals))
 ```
 
 ## Diversity Assessment

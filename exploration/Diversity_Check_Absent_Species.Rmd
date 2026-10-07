@@ -152,7 +152,7 @@ if (model_id == 1) {
                   family = 'binomial',
                   data = yX)
 } else if (model_id == 2) {
-  model <- glmmTMB (y ~  id + com * sp + rr(sp + 0 | id, 2),
+  model <- glmmTMB (y ~  (1|id) + com * sp + rr(sp + 0 | id, 2),
                   family = 'binomial',
                   data = yX)
 } else if (model_id == 3) {
@@ -181,7 +181,7 @@ eta_T_u_hat <- matrix(
 )
 
 ## Estimate uncertainty of u_hat
-uncertain <- simulate_random_effects(model = model, uncertainty = TRUE)
+uncertain <- simulate_random_effects(model = model)
 ```
 
 ### Does $\boldsymbol{\mu}_B^{\top}D\boldsymbol{\mu}_B$ or $\boldsymbol{\mu}_{Rao}^{\top}D\boldsymbol{\mu}_{Rao}$ measure diversity correctly? 

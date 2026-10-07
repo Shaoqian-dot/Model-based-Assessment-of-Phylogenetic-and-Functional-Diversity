@@ -128,8 +128,7 @@ yX$id <- factor(yX$id)
 ## Modelling
 
 ```{r}
-# model_id <- params$model
- model_id <- 3
+model_id <- params$model
 if (model_id == 1) {
   model <- glmmTMB (y ~ com * sp + rr(sp + 0 | id, 2),
                   family = 'binomial',

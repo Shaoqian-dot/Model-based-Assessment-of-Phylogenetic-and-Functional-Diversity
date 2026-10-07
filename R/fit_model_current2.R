@@ -1,5 +1,5 @@
 fit_model <- function(type, matrix_type, rr,
-                      yX, P, P_J, val_num.eig, Distribution, null, com_left, p){
+                      yX, P, P_J, val_num.eig, Distribution, null, com_left, p, site = FALSE, row_effect = FALSE){
   # Select eigenvector matrix
   P_use <- if (matrix_type == "P") P else P_J###############################################################
   
@@ -140,18 +140,29 @@ fit_model <- function(type, matrix_type, rr,
       )
       
       } else {
-      base_formula <- paste(
-        "y ~ (", fixed_part_1, ") + com : (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
-      )
-      # base_formula <- paste(
-      #   "y ~ com * (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
-      # )
-    }
+        if (site == TRUE) {
+          base_formula <- paste(
+            "y ~ (", fixed_part_1, ") + (1|site) + com : (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
+          )
+        } else {
+          base_formula <- paste(
+            "y ~ (", fixed_part_1, ") + com : (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
+          )
+        }
+     }
     if (rr) {
-      base_formula <- paste(
-        base_formula,
-        "+ rr(sp + 0 | id, 2)"
-      )
+      if (row_effect == TRUE){
+        base_formula <- paste(
+          base_formula,
+          "+ rr(sp + 1 | id, 2)"
+        )
+      } else {
+        base_formula <- paste(
+          base_formula,
+          "+ rr(sp + 0 | id, 2)"
+        )
+      }
+      
     }
 
     form <- as.formula(base_formula)
@@ -164,16 +175,17 @@ fit_model <- function(type, matrix_type, rr,
         family = Distribution,
         data = yX_tmp,
         REML=FALSE,
-        # control = glmmTMBControl(start_method = list(method = 'res', jitter.sd = 0.2),
-        #                          optCtrl = list(
-        #                            eps = 1e-6,
-        #                            iter.max = 1000,
-        #                            eval.max = 1000
-        #                          ))
+        control = glmmTMBControl(start_method = list(method = 'res', jitter.sd = 0.2),
+                                 # optCtrl = list(
+                                 #   eps = 1e-6,
+                                 #   iter.max = 1000,
+                                 #   eval.max = 1000
+                                 # )
+                                 )
       ),
       warning = function(w) {
         warning_msgs <<- c(warning_msgs, conditionMessage(w))
-        invokeRestart("muffleWarning")
+        #invokeRestart("muffleWarning")
       }
     )
     # warning_type <- dplyr::case_when(
