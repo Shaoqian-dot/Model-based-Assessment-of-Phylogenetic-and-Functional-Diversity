@@ -173,7 +173,7 @@ GroupingPairs <- function(DM_phy_func, quantile, species){# species is the reord
 temp_env <- new.env()
 
 # 2. Load your saved RData file into that specific environment
-load("C:/Users/huang/OneDrive - UNSW/PhD Project/Github/Model based assessment of phylogenetic and functional divesity/results/Real Application/my_environment.RData", envir = temp_env)
+load("results/Real Application/my_environment.RData", envir = temp_env)
 
 # 3. Extract only the specific variable you want into your Global Environment
 model <- temp_env$model
