@@ -112,6 +112,7 @@ alpha <- log(9 / 4)
 beta <- log(4)
 quantile <- 0.35
 axis_method <- "Method3"
+Absence <- TRUE
 
 ############################################################
 ## Set random seed
@@ -163,7 +164,7 @@ res <- run_simulation(
   quantile = quantile,
   Eigen = Eigen,
   axis_method  = axis_method,
-  Absence = TRUE,
+  Absence = Absence,
   FactorLoading = Lambda,
   TruePara = TruePara
 )
@@ -173,7 +174,7 @@ res <- run_simulation(
 ############################################################
 
 run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
-                   '_axis_method_', axis_method, '_Eigen_', Eigen)
+                   '_axis_method_', axis_method, '_Eigen_', Eigen, '_Absence_', Absence)
 
 out_dir <- here("output", run_name)
 
