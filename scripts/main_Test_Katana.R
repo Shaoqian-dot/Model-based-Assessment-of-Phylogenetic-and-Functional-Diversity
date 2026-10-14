@@ -66,7 +66,7 @@ source(here("R", "RaoQ.R"))#
 source(here("R", "randomization.R"))#
 source(here("R", "rand.RaoQ.fun.R"))#
 source(here("R", "MeanAbund.R"))#
-source(here("R", "save_checkpoint"))#
+source(here("R", "save_checkpoint.R"))#
 
 ############################################################
 ## Read command line arguments
