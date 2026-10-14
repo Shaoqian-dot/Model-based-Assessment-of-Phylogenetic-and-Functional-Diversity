@@ -40,6 +40,7 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(ape)
+library(stringr)
 
 ############################################################
 ## Source functions
@@ -47,23 +48,25 @@ library(ape)
 
 source(here("R", "getPhyloMatrix.R"))
 source(here("R", "spectral_decomp.R"))
-source(here("R", "run_simulation_global.R"))
-source(here("R", "simulation_core_global.R"))
-source(here("R", "get_num.eig.R"))
-source(here("R", "fit_model_current2.R"))
-source(here("R", "getData_current.R"))
+source(here("R", "run_simulation_global.R"))#
+source(here("R", "simulation_core_global.R"))#
+source(here("R", "get_num.eig.R"))#
+source(here("R", "fit_model_current2.R"))#
+source(here("R", "getData_current.R"))#
 source(here("R", "GroupingPairs.R"))
 source(here("R", "mean_matrix_current.R"))
 source(here("R", "sample_pairs.R"))
-source(here("R", "U_current.R"))
-source(here("R", "getChisquare_fixed.R"))
+source(here("R", "U_current.R"))#
+source(here("R", "getChisquare_fixed.R"))#
 source(here("R", "getData_nonSwap.R"))
-source(here("R", "Test_LRT.R"))
-source(here("R", "getChisquare.R"))
-source(here("R", "getRaosQ.R"))
-source(here("R", "RaoQ.R"))
-source(here("R", "randomization.R"))
-source(here("R", "rand.RaoQ.fun.R"))
+source(here("R", "Test_LRT.R"))#
+source(here("R", "getChisquare.R"))#
+source(here("R", "getRaosQ.R"))#
+source(here("R", "RaoQ.R"))#
+source(here("R", "randomization.R"))#
+source(here("R", "rand.RaoQ.fun.R"))#
+source(here("R", "MeanAbund.R"))#
+source(here("R", "save_checkpoint"))#
 
 ############################################################
 ## Read command line arguments
@@ -87,15 +90,17 @@ p <- c(5, 10, 20, 40, 80)
 
 r <- c(4, 8, 16, 32, 64)
 
-Eigen <- c(2)
+Eigen <- c(3)
 
 
 q <- 5
 
-signal <- NA
+# signal <- NA
+# 
+# c_val <- NA
+# sigma2 <- NA
 
-c_val <- NA
-sigma2 <- NA
+#Corr <- 1
 
 globalTest <- FALSE
 
@@ -104,12 +109,9 @@ test <- "Both"
 Swap <- TRUE
 
 alpha <- log(9 / 4)
-beta <- log(2)
+beta <- log(4)
 quantile <- 0.35
-
-Corr <- 1
-
-axis_method <- "Both"
+axis_method <- "Method3"
 
 ############################################################
 ## Set random seed
@@ -153,7 +155,6 @@ tree <- ape::read.tree(tree_file)
 cat("Running simulations...\n\n")
 
 res <- run_simulation(
-  signal_type = signal,
   family_type = family,
   globalTest = globalTest,
   test = test,
@@ -161,23 +162,24 @@ res <- run_simulation(
   p = p,
   q = q,
   r = r,
-  c_val = c_val,
-  sigma2 = sigma2,
   seed = seed,
   tree = tree,
   alpha = alpha,
   beta = beta,
   quantile = quantile,
-  Corr = Corr,
   Eigen = Eigen,
-  axis_method  = axis_method 
+  axis_method  = axis_method,
+  Absence = TRUE,
+  FactorLoading = Lambda,
+  TruePara = TruePara
 )
 
 ############################################################
 ## Save results
 ############################################################
 
-run_name <- "PhyD_Bin_p510204080_r48163264_TestBoth_MethodBoth_Eigen2"
+run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
+                   '_axis_method_', axis_method, '_Eigen_', Eigen)
 
 out_dir <- here("output", run_name)
 

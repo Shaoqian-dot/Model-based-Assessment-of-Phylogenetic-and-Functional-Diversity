@@ -5,7 +5,7 @@ randomization <- function(abundance, DM_phy_func){
   m <- nrow(DM_phy_func)
   
   # Assign species names to abundance matrix columns
-  colnames(abundance) <- colnames(DM_phy_func)
+  stopifnot(identical(colnames(abundance), colnames(DM_phy_func)))
   
   # Generate null distribution of Rao's Q via tip randomization (999 permutations)
   null.output <- replicate(999, rand.RaoQ.fun(DM = DM_phy_func, my.sample = abundance), simplify = "matrix")

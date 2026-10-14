@@ -1,6 +1,7 @@
 # Function to compute Rao's Quadratic Entropy (Rao's Q)
 # Note that species names in my.sample and DM are consistent.
 RaoQ <- function(my.sample, DM){  # DM: species-by-species distance matrix
+  stopifnot(identical(colnames(my.sample), colnames(DM)))
   
   # Step 1: Convert abundance data to relative abundance (row-wise normalization)
   # Each row represents a site; values are scaled to sum to 1

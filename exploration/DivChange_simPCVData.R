@@ -1,6 +1,7 @@
 rm(list = ls())
 library(ape)
 library(glmmTMB)
+library(stringr)
 source('R/sample_pairs.R')
 source('R/RaoQ.R')
 source('R/rand.RaoQ.fun.R')

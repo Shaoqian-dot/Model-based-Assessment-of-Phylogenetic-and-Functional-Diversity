@@ -1,8 +1,8 @@
 # If globalTest == TRUE, only "LRT" test is applicable. 
+# Please note that eigenvalue 0 of JSJ is removed when calculate the first k eigen-vectors.
 fit_models <- function(dat, 
                        family = c("gaussian", "poisson", "binomial"), 
                        globalTest, 
-                       tree, 
                        test = c("LRT", "Wald", "Both"),
                        S_J,
                        p,
@@ -32,7 +32,7 @@ fit_models <- function(dat,
       silent = TRUE
     )
     
-    fit_glmm_rr_null <<- try(
+    fit_glmm_rr_null <- try(
       fit_model(
         type = "p_mid",
         matrix_type = "P_J",
@@ -131,7 +131,6 @@ fit_models <- function(dat,
   }
   
   family <- match.arg(family)
-  #test <- match.arg(test)
   
   if(test == "Both"){
     test <- c("Wald", "LRT")
@@ -149,7 +148,7 @@ fit_models <- function(dat,
   fam <- switch(
     family,
     gaussian = gaussian(),
-    poisson  = nbinom2,
+    poisson  = nbinom2, # Account for over-dispersion
     binomial = binomial()
   )
   
@@ -198,23 +197,6 @@ fit_models <- function(dat,
     ))
   } else if (globalTest == FALSE) {
     
-    # if (axis_method == "Both") {
-    #   axis_method_tbl <- data.frame(
-    #     axis_method = c("Method1", "Method3"),
-    #     Methods_para = c(2, NA)
-    #   )
-    # } else if (axis_method == "Method1") {
-    #   axis_method_tbl <- data.frame(
-    #     axis_method = c("Method1"),
-    #     Methods_para = c(2)
-    #   )
-    # } else if (axis_method == "Method3") {
-    #   axis_method_tbl <- data.frame(
-    #     axis_method = c("Method3"),
-    #     Methods_para = c(NA)
-    #   )
-    # }
-    
     axis_method_tbl <- data.frame(
       axis_method = c("Method1", "Method3"),
       Methods_para = c(2, NA)
@@ -228,16 +210,16 @@ fit_models <- function(dat,
       ]
     }
     
-    eig <- spectral_decomp(VC_phy_func = S_J)
-    V_J <- eig$P # eigenvectors of the new similarity matrix
-    D_J <- eig$D # eigenvalues of the new similarity matrix
+    eig <- eigen(S_J)
+    V_J <- eig$vectors # eigenvectors of the new similarity matrix
+    D_J <- diag(eig$values) # eigenvalues of the new similarity matrix
     
     res_all <- pmap(axis_method_tbl, function(axis_method, Methods_para) {
       
       val_num.eig <- get_num.eig(
         Methods = axis_method,
         Methods_para = Methods_para,
-        D = D_J
+        D = D_J[-p, -p] # Remove eigenvalue 0
       )
       
       fit_glmm_no_rr <- try(
@@ -255,7 +237,7 @@ fit_models <- function(dat,
         silent = TRUE
       )
       
-      fit_glmm_rr <<- try(
+      fit_glmm_rr <- try(
         fit_model(
           type = "p_mid",
           matrix_type = "P_J",

@@ -1,34 +1,22 @@
-U <- function(p, r, q, P, Eigen){
+U <- function(p, r, q, P = NA, Eigen, sp_Sim = NA, FactorLoading = NA){
   
   # Initialize U matrix of size (r*q) x p
   U <- matrix(NA, r * q, p)
-  
+  colnames(U) <- sp_Sim
   
   # Select which pair of eigenvectors to use
   if (Eigen == 1){
+    
     Lambda <- P[, c(1, 2)]   # Use the first two eigenvectors
-    #rep <- Model_fix_J_rr$obj$env$report()
-    #Lambda <- rep$fact_load[[1]]
-    #Lambda <- matrix(c(0.34641103,  0.40831772,  0.43208410,  0.58132042, -0.05318892,  
-    #                   0.00000000,  0.53786800,  0.27269484,  0.48162548, -0.19023844), p, 2)
-  } else if(Eigen == 2) {
+    
+      } else if(Eigen == 2) {
     
     Lambda <- P[, (ncol(P)-1):ncol(P)]  # Use the last two eigenvectors
   
-    } else if (Eigen == 3) {
-      
-    mu_hat <- c(-0.21, 0.42)
-    Sigma_hat <-matrix(c(0.61, 0.06, 
-                          0.06, 0.99), 2, 2)
-    Lambda <- mvrnorm(p, mu_hat, Sigma_hat)
-  } else if (Eigen == 4) {
-    
-    mu_hat <- c(-0.21, 0.42)
-    Sigma_hat <- 1.5 * matrix(c(0.61, 0.06, 
-                          0.06, 0.99), 2, 2)
-    Lambda <- mvrnorm(p, mu_hat, Sigma_hat)
-  }
-  
+  } else if (Eigen == 3) {
+    Lambda <- FactorLoading[sp_Sim, ]
+    } 
+
   # Loop over all rows (r*q) and species (p)
   for (i in 1 : (r * q)){
     z <- mvrnorm(1, rep(0, 2), diag(c(1, 1)))

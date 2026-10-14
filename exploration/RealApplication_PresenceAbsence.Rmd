@@ -224,6 +224,7 @@ num.eig <- get_num.eig(Methods = 'Method3', NA, D = diag(eigen(J %*% VC_phy_func
 model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
                      val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p)$fit
+model_update <- up2date(model)
 
 model_rowEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
@@ -231,14 +232,18 @@ model_rowEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
                      site = FALSE, row_effect = TRUE)$fit
 model_SiteEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
-                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p, site = FALSE, row_effect = FALSE)$fit
+                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p, site = TRUE, row_effect = FALSE)$fit
+
+# Compare the two models: model_rowEffect and model_SiteEffect
+anova(model_update, model_SiteEffect)
+
 ```
 
 ### Model diagnosis
 ```{r}
-# Model Diagnosis
+# Model Diagnosis for model (model_update)
 res <- simulateResiduals(
-  fittedModel = model,   #Your glmmTMB object
+  fittedModel = model_updated,   #Your glmmTMB object
   n = 1000              # Normally in 500–1000
 ) # when n = 10000, the qqplot becomes normal.
 
@@ -257,6 +262,41 @@ qqline(z, col = "red", lwd = 2)
 
 # Histogram of scaled residuals
 histogram(qnorm(res$scaledResiduals))
+
+# Model Diagnosis for model (model_SiteEffect)
+res_RESite <- simulateResiduals(
+  fittedModel = model_SiteEffect,   #Your glmmTMB object
+  n = 1000              # Normally in 500–1000
+) 
+
+## Residual plot: dunn-smyth vs predicted values
+fitted_values <- fitted(model_SiteEffect)
+dunn_smyth_residuals <- residuals(model_SiteEffect, type = "dunn-smyth")
+
+plot(
+  fitted_values,
+  dunn_smyth_residuals,
+  pch = 16,
+  col = adjustcolor("black", alpha.f = 0.35),
+  xlab = "Fitted values",
+  ylab = " Dunn-Smyth residuals"
+)
+
+abline(h = 0, col = "red", lty = 2, lwd = 2)
+
+lines(
+  lowess(fitted_values, dunn_smyth_residuals),
+  col = "blue",
+  lwd = 2
+)
+
+## Further check if there is a decreasing variance
+DHARMa::plotResiduals(
+  res_RESite,
+  rank = TRUE,
+  absoluteDeviation = TRUE,
+  quantreg = TRUE
+)
 ```
 
 ## Diversity Assessment

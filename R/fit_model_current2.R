@@ -41,7 +41,7 @@ fit_model <- function(type, matrix_type, rr,
   # Lsp <- Sp %*% P_use[, 1:val_num.eig]
   # colnames(Lsp) <- paste0("p", 1:val_num.eig)
   
-  Lsp <- Sp %*% P_use[, 1:p]
+  Lsp <- Sp %*% P_use
   colnames(Lsp) <- paste0("p", 1:p)
   
   yX_tmp <- cbind(yX, Lsp)
@@ -101,24 +101,13 @@ fit_model <- function(type, matrix_type, rr,
   }
 #   
   # ===== CASE 4: eigenvector (p_mid) model =====
-  Sp <- model.matrix(~0 + sp, data = yX)
-  Lsp <- Sp %*% P_use
-  colnames(Lsp) <- paste0("p", 1:p)
-
-  yX_tmp <- cbind(yX, Lsp)
-
   K <- diag(p - val_num.eig)
   colnames(K) <- paste0("p", (val_num.eig + 1) : p)
-  # rownames(K) <- paste0("p", (val_num.eig + 1) : (p - 1))
   
   if (type == "p_mid") {
-    # base_formula <- paste(
-    #   "y ~ com * (", fixed_part_1, ") + propto(0 + com * (", fixed_part_2, ") |rep(1, nrow(yX_tmp)), K)"
-    # )
     if (null) {
       for (l in seq_along(com_left)) {
-        yX_tmp[[paste0("com", com_left[l])]] <- 
-          as.numeric(yX_tmp$com == com_left[l])
+        yX_tmp[[paste0("com", com_left[l])]] <- as.numeric(yX_tmp$com == com_left[l]) #Create community indicators
       }
       
       interaction_terms <- if(length(com_left) == 0){
@@ -128,7 +117,6 @@ fit_model <- function(type, matrix_type, rr,
       }
       
       rhs_terms <- c(
-        #"com",
         paste0("(", fixed_part_1, ")"),
         interaction_terms,
         paste0("propto(0 + ", fixed_part_2, " | com, K)")
@@ -175,31 +163,20 @@ fit_model <- function(type, matrix_type, rr,
         family = Distribution,
         data = yX_tmp,
         REML=FALSE,
-        control = glmmTMBControl(start_method = list(method = 'res', jitter.sd = 0.2),
-                                 # optCtrl = list(
-                                 #   eps = 1e-6,
-                                 #   iter.max = 1000,
-                                 #   eval.max = 1000
-                                 # )
-                                 )
+        # control = glmmTMBControl(start_method = list(method = 'res', jitter.sd = 0.2)
+        #                          # optCtrl = list(
+        #                          #   eps = 1e-6,
+        #                          #   iter.max = 1000,
+        #                          #   eval.max = 1000
+        #                          # )
+        #                          )
       ),
       warning = function(w) {
         warning_msgs <<- c(warning_msgs, conditionMessage(w))
         #invokeRestart("muffleWarning")
       }
     )
-    # warning_type <- dplyr::case_when(
-    #   any(grepl("non-positive-definite Hessian", warning_msgs)) &
-    #     any(grepl("false convergence", warning_msgs)) ~ "both",
-    #   
-    #   any(grepl("non-positive-definite Hessian", warning_msgs)) ~
-    #     "non-positive-definite Hessian",
-    #   
-    #   any(grepl("false convergence", warning_msgs)) ~
-    #     "false convergence",
-    #   
-    #   TRUE ~ "None"
-    # )
+
     warning_msgs <- unique(warning_msgs)
     
     warning_msgs <- if (length(warning_msgs) == 0) {
@@ -216,30 +193,6 @@ fit_model <- function(type, matrix_type, rr,
       paste(warning_msgs, collapse = " | ")
     }
     
-    # warning_type <- dplyr::case_when(
-    #   length(warning_msgs) == 0 ~ "None"
-    # )
-    # 
-    # warning_type <- dplyr::case_when(
-    #   length(warning_msgs) == 0 ~ "None",
-    #   
-    #   any(grepl("non-positive-definite Hessian", warning_msgs)) &
-    #     any(grepl("false convergence", warning_msgs)) ~ "both",
-    #   
-    #   any(grepl("non-positive-definite Hessian", warning_msgs)) ~
-    #     "non-positive-definite Hessian",
-    #   
-    #   any(grepl("false convergence", warning_msgs)) ~
-    #     "false convergence",
-    #   
-    #   TRUE ~ "Other"
-    # )
-    # fit <- glmmTMB(
-    #   form,
-    #   family = Distribution,
-    #   data = yX_tmp,
-    #   REML=FALSE
-    # )
     convergence <- fit$fit$convergence
     pdHess <- fit$sdr$pdHess
     return(

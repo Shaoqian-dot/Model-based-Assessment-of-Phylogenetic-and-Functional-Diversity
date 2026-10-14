@@ -1,0 +1,184 @@
+---
+title: "Try David's experiment"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+library(ape)
+library(stringr)
+knitr::opts_chunk$set(echo = TRUE)
+
+# Function for stratified sampling from a community mean abundance
+sample_species_stratified <- function(mean_abundance, p, seed = NULL) {
+  set.seed(seed)
+  n_species <- length(mean_abundance)
+  
+  # Order species abundance from rarest to most abundant
+  mean_abundance_sort <- sort(mean_abundance)
+  
+  # Group species abundances 
+  strata1 <- mean_abundance_sort[1 : 5]
+  strata2 <- mean_abundance_sort[6 : 20]
+  strata3 <- mean_abundance_sort[21 : 80]
+  strata4 <- mean_abundance_sort[81 : 105]
+  strata5 <- mean_abundance_sort[106 : 115]
+  
+  # Sampling
+  abundance_target <- c(sample(strata1, 1), sample(strata2, 1),
+                        sample(strata3, 1), sample(strata4, 1),
+                        sample(strata5, 1))
+  return(abundance_target)
+}
+```
+
+# Simulation Prepartion
+## Parameter setup
+```{r}
+p_total <- 115 # Total species in the model
+p <- 5 # the number of species we wanna sub-sample
+seed <- 123 # random seed to sub-sample species
+alpha <- 2.426285 # alpha effect size
+beta <- 2.426285 # beta effect size
+```
+
+## Read raw data
+```{r}
+tree <- read.tree("../data/example.tre")
+
+trait <- read.csv(
+  "../data/trait data.csv",
+  stringsAsFactors = FALSE
+)
+
+my.sample <- read.csv(
+  "../data/community data.csv",
+  stringsAsFactors = FALSE
+)
+```
+
+## Harmonize species names between tree and community data
+```{r, include = FALSE}
+# Convert underscores in tree tip labels to periods to match the community data.
+tree_species <- str_replace_all(
+  tree$tip.label,
+  "_",
+  "."
+)
+
+community_species <- colnames(my.sample)
+
+# Identify tree species whose names do not have a unique match in the
+# community dataset.
+unmatched_index <- which(
+  !tree_species %in% community_species
+)
+
+# Manually correct known species-name mismatches.
+tree_species[unmatched_index] <- c(
+  "Astragalus.dasyanthus.exscapus",
+  "Populus.alba...P..x.canescens",
+  "Capsella.bursa.pastoris",
+  "Festuca.rupicola.valesiaca",
+  "Stipa.borysthenica.capillata"
+)
+
+tree$tip.label <- tree_species
+```
+
+## Reload the model
+```{r, include = FALSE}
+# 1. Create a new, empty environment
+temp_env <- new.env()
+
+# 2. Load your saved RData file into that specific environment
+load("../results/Real Application/my_environment.RData", envir = temp_env)
+
+# 3. Extract only the specific variable you want into your Global Environment
+model <- temp_env$model
+model_updated <- glmmTMB::up2date(model)
+
+# 4. Clean up the temporary environment to free memory
+rm(temp_env)
+
+# 5 Extract fixed effects
+nd <- model_updated$frame
+
+## Include propto(), exclude rr()
+nd_propto <- nd
+nd_propto$id[] <- NA     # [] preserves the factor class
+
+eta_T_hat <- predict(
+  model_updated,
+  newdata = nd_propto,
+  re.form = NULL,
+  type = "link"
+)
+
+eta_T_hat <- matrix(
+  as.numeric(eta_T_hat),
+  ncol = p_total,
+  byrow = FALSE
+)
+eta_T_hat_unique <- unique(eta_T_hat)
+
+mean_abundance <- plogis(eta_T_hat_unique[8, ])
+names(mean_abundance) <- levels(model$frame$sp)
+```
+
+# Construct Mean Abundance matrix
+## Subsample abundances
+```{r}
+subsample <- sample_species_stratified(
+  mean_abundance = mean_abundance,
+  p = 5,
+  seed = seed
+)
+```
+
+## Distance matrix
+```{r}
+species <- names(subsample)
+# Keep only species present in the filtered community dataset.
+subtree <- keep.tip(
+  tree,
+  species
+)
+# Replace species labels
+subtree_plot <- subtree
+
+species_treeOrder <- subtree$tip.label
+
+plot(subtree)
+
+DM <- cophenetic.phylo(subtree)
+print(DM)
+```
+
+## Strategies to produce different levels of diversity changes
+```{r}
+mu1 <- subsample[species_treeOrder]
+mu2 <- replace(mu1, 3, plogis(qlogis(mu1[2]) + beta))
+mu3 <- replace(mu1, 4, plogis(qlogis(mu1[2]) + beta))
+mu4 <- replace(mu1, 5, plogis(qlogis(mu1[2]) + beta))
+mu5 <- plogis(qlogis(mu1) + alpha)
+mu <- rbind(mu1, mu2, mu3, mu4, mu5)
+print(mu)
+```
+
+
+# Diversity
+
+```{r}
+mu_RA <- mu/apply(mu, 1, sum)
+RaoQ <- rowSums(mu_RA %*% DM * mu_RA)
+print(RaoQ)
+
+plot(RaoQ , type = 'l', xlab = 'Community',
+     ylab = 'Rao')
+```
+
+Rao's diversity shows that the results don't satisfy our expectation because there is huge abundance change between com 1 and com 2. 
+
