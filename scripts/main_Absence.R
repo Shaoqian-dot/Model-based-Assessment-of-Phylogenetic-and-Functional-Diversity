@@ -123,6 +123,14 @@ tree_species[unmatched_index] <- c(
 
 tree$tip.label <- tree_species
 
+# Save for Katana running
+output_folder <- "data"
+save(
+  TruePara,
+  tree,
+  Lambda,
+  file = file.path(output_folder, "Para_PCV.RData")
+) 
 ###########################################################
 ## Main simulation runner
 ###########################################################

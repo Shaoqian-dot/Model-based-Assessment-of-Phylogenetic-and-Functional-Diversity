@@ -137,16 +137,10 @@ cat("Swap              :", Swap, "\n")
 cat("----------------------------------------\n\n")
 
 ############################################################
-## Load tree
+## Load parameters estimated from the PCV data set: tree, True_Para, Lambda
 ############################################################
 
-tree_file <- here("data", "example.tre")
-
-if (!file.exists(tree_file)) {
-  stop("Cannot find tree file: ", tree_file)
-}
-
-tree <- ape::read.tree(tree_file)
+load(file.path('data', "Para_PCV.RData"))
 
 ############################################################
 ## Run simulation
