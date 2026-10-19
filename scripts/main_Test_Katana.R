@@ -86,7 +86,7 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(5, 10, 20, 40, 80)
+p <- c(5)
 
 r <- c(4, 8, 16, 32, 64)
 
@@ -174,7 +174,8 @@ res <- run_simulation(
 ############################################################
 
 run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
-                   '_axis_method_', axis_method, '_Eigen_', Eigen, '_Absence_', Absence)
+                   '_axis_method_', axis_method, '_Eigen_',
+                   Eigen, '_Absence_', Absence, '_p_', p)
 
 out_dir <- here("output", run_name)
 

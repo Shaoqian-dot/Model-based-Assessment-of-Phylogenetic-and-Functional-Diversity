@@ -40,97 +40,13 @@ source('R/save_checkpoint.R')
 ############################################################
 
 set.seed(123)
-Habitat <- 'OA' # The target habitat. 8 represents OA. The habitat order is CG, LF, MF, NE, OA, OP, SE, SF.
-# Ratio of rare species: 10/115 =0.086957 
 
 ############################################################
-### Load the model and choose community mean abundances
-############################################################
-# Load the model
-temp_env <- new.env()
-
-load("results/Real Application/my_environment.RData", envir = temp_env)
-
-model <- temp_env$model_SiteEffect
-
-rm(temp_env)
-
-p_total <- nlevels(model$frame$sp)
-
-# eta_T_hat
-nd <- model$frame
-nd$id[] <- NA
-nd$site[] <- NA
-eta_T_hat <- predict(model, 
-                     newdata = nd,
-                     type = "link",
-                     re.form = NULL)
-
-Link_data <- data.frame(
-  Community = model$frame$com,
-  Link = eta_T_hat
-)
-boxplot(Link ~ Community, data = Link_data) # ChatGPT suggests using 
-
-eta_T_hat <- matrix(
-  as.numeric(eta_T_hat),
-  ncol = p_total,
-  byrow = FALSE
-)
-eta_T_hat_unique <- unique(eta_T_hat)
-rownames(eta_T_hat_unique) <- levels(model$frame$com)
-  
-TruePara <- plogis(eta_T_hat_unique[Habitat, ])
-names(TruePara) <- levels(model$frame$sp)
-# Factor Loading
-rep <- model$obj$env$report()
-Lambda <- rep$fact_load[[3]]
-rownames(Lambda) <- levels(model$frame$sp)
-
-############################################################
-### Load phylogenetic tree and community data
+## Load parameters estimated from the PCV data set: tree, True_Para, Lambda
 ############################################################
 
-my.sample <- read.csv(
-  "data/community data.csv",
-  stringsAsFactors = FALSE)
+load(file.path('data', "Para_PCV.RData"))
 
-tree <- read.tree('data/example.tre')
-
-# Convert underscores in tree tip labels to periods to match the community data.
-tree_species <- str_replace_all(
-  tree$tip.label,
-  "_",
-  "."
-)
-
-community_species <- colnames(my.sample)
-
-# Identify tree species whose names do not have a unique match in the
-# community dataset.
-unmatched_index <- which(
-  !tree_species %in% community_species
-)
-
-# Manually correct known species-name mismatches.
-tree_species[unmatched_index] <- c(
-  "Astragalus.dasyanthus.exscapus",
-  "Populus.alba...P..x.canescens",
-  "Capsella.bursa.pastoris",
-  "Festuca.rupicola.valesiaca",
-  "Stipa.borysthenica.capillata"
-)
-
-tree$tip.label <- tree_species
-
-# Save for Katana running
-output_folder <- "data"
-save(
-  TruePara,
-  tree,
-  Lambda,
-  file = file.path(output_folder, "Para_PCV.RData")
-) 
 ###########################################################
 ## Main simulation runner
 ###########################################################

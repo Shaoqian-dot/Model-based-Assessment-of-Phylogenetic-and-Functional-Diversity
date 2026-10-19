@@ -3,6 +3,52 @@
 # DM_phy_func: distance matrix (functional or phylogenetic)
 # randomization: indicator (0 = no randomization, 1 = apply randomization method)
 # q: number of communities (groups)
+safe_t_pvalue <- function(x, y, tol = 1e-12) {
+  
+  x <- x[is.finite(x)]
+  y <- y[is.finite(y)]
+  
+  tryCatch(
+    t.test(
+      x,
+      y,
+      paired = FALSE
+    )$p.value,
+    
+    error = function(e) {
+      
+      # Stop for every other type of error
+      if (!grepl(
+        "data are essentially constant",
+        conditionMessage(e),
+        fixed = TRUE
+      )) {
+        stop(e)
+      }
+      
+      x_constant <- max(abs(x - x[1])) <=
+        tol * max(1, max(abs(x)))
+      
+      y_constant <- max(abs(y - y[1])) <=
+        tol * max(1, max(abs(y)))
+      
+      # Stop if the error is not explained by both groups being constant
+      if (!x_constant || !y_constant) {
+        stop(e)
+      }
+      
+      same_constant <- abs(x[1] - y[1]) <=
+        tol * max(1, abs(x[1]), abs(y[1]))
+      
+      if (same_constant) {
+        1
+      } else {
+        0
+      }
+    }
+  )
+}
+
 getRaosQ <- function(abundance, DM_phy_func, use_randomization, q) {
   
   # Number of replicates per community
@@ -54,11 +100,15 @@ getRaosQ <- function(abundance, DM_phy_func, use_randomization, q) {
     
     # Perform pairwise t-tests (unpaired)
     for (i in seq_along(group_ids)){
-      p_value[i] <- t.test(
-        PD[names(PD) == ref_group],       # reference group (com 1)
-        PD[names(PD) == group_ids[i]],    # comparison group
-        paired = FALSE
-      )$p.value
+      x <- unname(PD[names(PD) == ref_group])
+      y <- unname(PD[names(PD) == group_ids[i]])
+      
+      p_value[i] <- safe_t_pvalue(x, y)
+      # p_value[i] <- t.test(
+      #   PD[names(PD) == ref_group],       # reference group (com 1)
+      #   PD[names(PD) == group_ids[i]],    # comparison group
+      #   paired = FALSE
+      # )$p.value
     }
   }
   

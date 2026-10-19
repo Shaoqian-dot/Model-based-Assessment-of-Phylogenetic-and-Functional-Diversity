@@ -231,6 +231,7 @@ run_simulation <- function(
             p = p,
             r = r,
             Eigen = Eigen,
+            eta_bar = mean(qlogis(subsample)),
             .before = 1
           )
 

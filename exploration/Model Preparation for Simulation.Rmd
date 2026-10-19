@@ -1,0 +1,158 @@
+---
+title: "Model Preparation for Simulation"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+library(glmmTMB)
+library(DHARMa)
+library(dplyr)
+library(ape)
+library(stringr)
+knitr::opts_chunk$set(echo = TRUE)
+# Load the model
+temp_env <- new.env()
+
+load("../results/Real Application/my_environment.RData", envir = temp_env)
+
+model_SiteEffect <- temp_env$model_SiteEffect
+model <- up2date(temp_env$model)
+
+rm(temp_env)
+```
+
+## Model Comparation
+
+```{r cars}
+anova(model, model_SiteEffect)
+```
+
+## Model Diagnosis
+
+```{r pressure, echo=FALSE}
+# Model Diagnosis for model_SiteEffect
+res_RESite <- simulateResiduals(
+  fittedModel = model_SiteEffect,   #Your glmmTMB object
+  n = 1000              # Normally in 500–1000
+) 
+
+## Residual plot: dunn-smyth vs predicted values
+fitted_values <- fitted(model_SiteEffect)
+dunn_smyth_residuals <- residuals(model_SiteEffect, type = "dunn-smyth")
+
+plot(
+  fitted_values,
+  dunn_smyth_residuals,
+  pch = 16,
+  col = adjustcolor("black", alpha.f = 0.35),
+  xlab = "Fitted values",
+  ylab = " Dunn-Smyth residuals"
+)
+
+abline(h = 0, col = "red", lty = 2, lwd = 2)
+
+lines(
+  lowess(fitted_values, dunn_smyth_residuals),
+  col = "blue",
+  lwd = 2
+)
+
+## Further check if there is a decreasing variance
+DHARMa::plotResiduals(
+  res_RESite,
+  rank = TRUE,
+  absoluteDeviation = TRUE,
+  quantreg = TRUE
+)
+```
+
+## Community Choice
+```{r}
+# eta_T_hat
+nd <- model_SiteEffect$frame
+nd$id[] <- NA
+nd$site[] <- NA
+eta_T_hat <- predict(model_SiteEffect, 
+                     newdata = nd,
+                     type = "link",
+                     re.form = NULL)
+
+Link_data <- data.frame(
+  Community = model_SiteEffect$frame$com,
+  Link = eta_T_hat
+)
+boxplot(Link ~ Community, data = Link_data)
+
+# Define rare species
+Abund_OA_data <- 
+  unique(Link_data %>% 
+  dplyr::filter(
+    Community == 'OA'
+  ))
+Abund_OA <- plogis(Abund_OA_data$Link)
+TruePara <- Abund_OA
+names(TruePara) <- levels(model_SiteEffect$frame$sp)
+
+Ratio_Rara <- mean(Abund_OA < (1/64))
+print(Ratio_Rara)
+```
+## Tree with tip lables corrected
+```{r}
+my.sample <- read.csv(
+  "../data/community data.csv",
+  stringsAsFactors = FALSE)
+  
+
+tree <- read.tree("../data/example.tre")
+
+# Convert underscores in tree tip labels to periods to match the community data.
+tree_species <- str_replace_all(
+  tree$tip.label,
+  "_",
+  "."
+)
+
+community_species <- colnames(my.sample)
+
+# Identify tree species whose names do not have a unique match in the
+# community dataset.
+unmatched_index <- which(
+  !tree_species %in% community_species
+)
+
+# Manually correct known species-name mismatches.
+tree_species[unmatched_index] <- c(
+  "Astragalus.dasyanthus.exscapus",
+  "Populus.alba...P..x.canescens",
+  "Capsella.bursa.pastoris",
+  "Festuca.rupicola.valesiaca",
+  "Stipa.borysthenica.capillata"
+)
+
+tree$tip.label <- tree_species
+```
+
+## Factor Loadings
+```{r}
+report_obj <- model_SiteEffect$obj$env$report(model_SiteEffect$fit$parfull)
+# Inspect all reduced-rank loading matrices
+length(report_obj$fact_load)
+lapply(report_obj$fact_load, dim)
+# Loadings for the first rr() term
+Lambda <- report_obj$fact_load[[3]]
+rownames(Lambda) <- levels(model_SiteEffect$frame$sp)
+```
+
+## Save variables for simulation
+```{r}
+# Save the three objects
+save(
+  TruePara,
+  tree,
+  Lambda,
+  file = file.path("../data", "Para_PCV.RData")
+)
+```

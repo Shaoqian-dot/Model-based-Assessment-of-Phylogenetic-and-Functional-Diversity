@@ -9,6 +9,7 @@ library(dplyr)
 library(purrr)
 library(here)
 library(ggplot2)
+library(ggh4x)
 
 cat("Aggregating simulation outputs...\n")
 
@@ -17,7 +18,7 @@ cat("Aggregating simulation outputs...\n")
 ############################################################
 
 files <- list.files(
-  here("output", "PhyD_Bin_p_r_TestBoth_MethodBoth_Eigen2"),
+  here("output", "Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE"),
   pattern = "\\.rds$",
   recursive = TRUE,
   full.names = TRUE
@@ -72,12 +73,9 @@ res_all <- purrr::map_dfr(files, function(f) {
 res_summary <- res_all %>%
   group_by(
     family,
-    signal,
     p,
     r,
-    c_val,
     model,
-    globalTest,
     test,
     Eigen,
     com,
@@ -96,156 +94,84 @@ res_summary <- res_all %>%
 # ############################################################
 # ### Power plot
 # ############################################################
-# 
-# # ======================
-# # User settings
-# # ======================
-# 
-# x_var <- "r"      # 改成 "p" 即可画 Power vs p
-# facet_var <- "com"
-# 
-# # ======================
-# # Data filter
-# # ======================
-# 
-# plot_data <- res_summary %>%
-#   filter(
-#     p == 10,
-#     family == "poisson",
-#     Eigen == 1,
-#     globalTest == FALSE,
-#     com %in% c(2, 3, 4, 5),
-#     axis_method == "Method1" | is.na(axis_method)
-#   ) %>%
-#   mutate(
-#     test_plot = ifelse(is.na(test), "Baseline", test)
-#   )
-# 
-# x_breaks <- sort(unique(plot_data[[x_var]]))
-# 
-# # ======================
-# # Plot
-# # ======================
-# 
-# fig <- ggplot(
-#   plot_data,
-#   aes(
-#     x = .data[[x_var]],
-#     y = power,
-#     color = model,
-#     linetype = test_plot,
-#     group = interaction(model, test_plot)
-#   )
-# ) +
-#   geom_line(linewidth = 1) +
-#   geom_point(size = 2) +
-#   facet_wrap(
-#     ~ com,
-#     nrow = 1
-#   ) +
-#   scale_linetype_manual(
-#     values = c(
-#       Wald = "dashed",
-#       LRT = "solid",
-#       Baseline = "dotdash"
-#     )
-#   ) +
-#   scale_color_manual(
-#     values = c(
-#       glmm_no_rr = "#1B9E77",
-#       glmm_rr = "#D95F02",
-#       RaosQ = "#7570B3",
-#       `Randomized RaosQ` = "#E7298A"
-#     )
-#   ) +
-#   scale_x_continuous(
-#     breaks = x_breaks
-#   ) +
-#   coord_cartesian(
-#     ylim = c(0, 1)
-#   ) +
-#   theme_bw() +
-#   labs(
-#     x = ifelse(
-#       x_var == "r",
-#       "Sample size (r)",
-#       "Number of species (p)"
-#     ),
-#     y = "Power",
-#     color = "Model",
-#     linetype = "Test"
-#   )
-# fig
-#install.packages("ggh4x")
-library(ggh4x)
+# Plot settings
+x_var <- "r"
+row_var <- if (x_var == "r") "p" else "r"
 
-x_var = 'r'
-row_var <- ifelse(x_var == "r", "p", "r")         # choose "p" or "r" for panel rows
-if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
-q <- 5
+q_fixed <- 5
+eigen_target <- 3
+axis_method_label <- "Method3"
 
+levels_p <- c(5, 10, 20, 40, 80)
+levels_r <- c(4, 8, 16, 32, 64)
 
-levels_p = c(5, 10, 20, 40, 80)
-levels_r = c(4, 8, 16, 32, 64)
-axis_method_label <- 'Method3'
+scenario_levels <- c(
+  "Small ΔPD\nwith ΔComposition",
+  "Large ΔPD\nwith ΔComposition",
+  "No ΔPD\nwith ΔComposition",
+  "No ΔPD\nwith ΔOverall abundance"
+)
+
+# Values displayed on the x-axis
+x_breaks <- if (x_var == "r") {
+  q_fixed * levels_r
+} else {
+  levels_p
+}
+
 plot_data <- res_summary %>%
   filter(
-    family == "binomial",
-    Eigen == 1,
-    globalTest == FALSE,
-    axis_method == axis_method_label | is.na(axis_method)
+    .data$family == "binomial",
+    .data$Eigen == .env$eigen_target,
+    is.na(.data$axis_method) |
+      .data$axis_method == .env$axis_method_label
   ) %>%
   mutate(
-    test_plot = ifelse(is.na(test), "Baseline", test),
+    test_plot = coalesce(as.character(.data$test), "Baseline"),
     
-    ## First two columns = Power
-    ## Last two columns = Type I error
-    metric = ifelse(com %in% c(2, 5), "Type I error", "Power"),
+    scenario = case_when(
+      .data$com == 3 ~ "Small ΔPD\nwith ΔComposition",
+      .data$com == 4 ~ "Large ΔPD\nwith ΔComposition",
+      .data$com == 2 ~ "No ΔPD\nwith ΔComposition",
+      .data$com == 5 ~ "No ΔPD\nwith ΔOverall abundance",
+      TRUE ~ NA_character_
+    ),
     
-    ## Column labels
-    scenario = dplyr::case_when(
-      com == 3 ~ "Small ΔPD\nwith ΔComposition",
-      com == 4 ~ "Large ΔPD\nwith ΔComposition",
-      com == 2 ~ "No ΔPD\nwith ΔComposition",
-      com == 5 ~ "No ΔPD\nwith ΔOverall abundace"
-    )
-  )
-
-plot_data <- plot_data %>%
-  mutate(
-    row_label = if (row_var == "p") {
+    scenario = factor(
+      scenario,
+      levels = scenario_levels
+    ),
+    
+    # Actual variable plotted on the x-axis
+    x_value = if (.env$x_var == "r") {
+      .env$q_fixed * .data$r
+    } else {
+      .data$p
+    },
+    
+    row_label = if (.env$row_var == "p") {
       factor(
-        p,
-        levels = levels_p,
-        labels = paste("# Species =", levels_p)
+        .data$p,
+        levels = .env$levels_p,
+        labels = paste("# Species =", .env$levels_p)
       )
     } else {
       factor(
-        r,
-        levels = levels_r,
-        labels = paste("Sample size =", q * levels_r)
+        .data$r,
+        levels = .env$levels_r,
+        labels = paste(
+          "Sample size =",
+          .env$q_fixed * .env$levels_r
+        )
       )
     }
-  )
-plot_data <- plot_data %>%
-  mutate(total_n = q * r)
-
-plot_data$scenario <- factor(
-  plot_data$scenario,
-  levels = c(
-    "Small ΔPD\nwith ΔComposition",
-    "Large ΔPD\nwith ΔComposition",
-    "No ΔPD\nwith ΔComposition",
-    "No ΔPD\nwith ΔOverall abundace"
-  )
-)
-# plot_data <- plot_data |>
-#   dplyr::filter(test_plot != "LRT")
+  ) %>%
+  filter(!is.na(.data$scenario))
 
 fig <- ggplot(
   plot_data,
   aes(
-    x = .data[[x_var]],
+    x = x_value,
     y = power,
     colour = model,
     linetype = test_plot,
@@ -254,16 +180,13 @@ fig <- ggplot(
 ) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
+  
   ggh4x::facet_grid2(
     rows = vars(row_label),
     cols = vars(scenario),
     switch = "y"
   ) +
-  theme(
-    strip.placement = "outside",
-    strip.background = element_blank(),
-    strip.text.y.right = element_text(angle = 0, face = "bold")
-  ) +
+  
   scale_linetype_manual(
     values = c(
       Wald = "dashed",
@@ -271,7 +194,8 @@ fig <- ggplot(
       Baseline = "dotdash"
     )
   ) +
-  scale_color_manual(
+  
+  scale_colour_manual(
     values = c(
       glmm_no_rr = "#1B9E77",
       glmm_rr = "#D95F02",
@@ -279,40 +203,45 @@ fig <- ggplot(
       `Randomized RaosQ` = "#E7298A"
     )
   ) +
+  
   scale_x_continuous(
     trans = "log2",
-    breaks = if (x_var == "r") {
-      q * levels_r
-    } else {
-      levels_p
-    },
-    labels = waiver()
+    breaks = x_breaks,
+    labels = x_breaks
   ) +
+  
   coord_cartesian(ylim = c(0, 1)) +
-  theme_bw() +
+  
   labs(
-    x = ifelse(
-      x_var == "r",
-      "Sample size (log2 scale)",
+    x = if (
+      x_var == "r"
+    ) {
+      "Sample size (log2 scale)"
+    } else {
       "Number of species (log2 scale)"
-    ),
+    },
     y = NULL,
     colour = "Model",
     linetype = "Test"
-  ) 
+  ) +
+  
+  theme_bw() +
+  theme(
+    strip.placement = "outside",
+    strip.background = element_blank(),
+    strip.text.y.left = element_text(
+      angle = 0,
+      face = "bold"
+    )
+  )
 
 fig
 
-
-
 # Produce simplified plot (Wald Test only)
-library(ggh4x)
 
 x_var = 'r'
 row_var <- ifelse(x_var == "r", "p", "r")         # choose "p" or "r" for panel rows
-#if (x_var == 'r') x_var <- "total_n"           # "r" or "p"
 q <- 5
-
 
 levels_p = c(5, 10, 20, 40, 80)
 levels_r = c(4, 8, 16, 32, 64)
