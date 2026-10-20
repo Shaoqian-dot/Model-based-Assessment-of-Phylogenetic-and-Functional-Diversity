@@ -86,7 +86,7 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(5)
+p <- c(80)
 
 r <- c(4, 8, 16, 32, 64)
 

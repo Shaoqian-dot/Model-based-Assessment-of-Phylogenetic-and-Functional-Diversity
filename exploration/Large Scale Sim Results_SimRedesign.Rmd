@@ -177,6 +177,12 @@ files_muRef <- list.files(
   recursive = TRUE,
   full.names = TRUE
 )
+files_muMeanOverll <- list.files(
+  here("output", "Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE_p_5_muMeanOverall"),
+  pattern = "\\.rds$",
+  recursive = TRUE,
+  full.names = TRUE
+)
 
 cat("Number of files found:", length(files), "\n")
 
@@ -222,7 +228,45 @@ res_all_muRef <- purrr::map_dfr(files_muRef, function(f) {
   
   x
 })
+res_all_muMeanOverall <- purrr::map_dfr(files_muMeanOverll, function(f) {
+  
+  x <- readRDS(f)
+  
+  # Rename old column to the new name
+  if ("p_values" %in% names(x)) {
+    x <- dplyr::rename(x, pvalue = p_values)
+  }
+  
+  x
+})
 ```
+## summarize the Simulation Results based on mu Overall Mean
+```{r}
+res_summary_muMeanOverall <- res_all_muMeanOverall %>%
+  group_by(
+    family,
+    p,
+    r,
+    model,
+    test,
+    Eigen,
+    com,
+    method,
+    axis_method) %>%
+      summarise(
+        power = mean (pvalue < 0.05, na.rm = TRUE),
+        n_jobs = n(),
+        .groups = 'drop'
+      )
+  PanelPlot (x_var = "r",
+           q_fixed = 5,
+           eigen_target = 3,
+           axis_method_label = "Method3",
+           levels_p <- c(5),
+           levels_r <- c(4, 8, 16, 32, 64),
+           res_summary = res_summary_muMeanOverall) 
+```
+
 ## summarize the Simulation Results based on mu Ref
 ```{r}
 res_summary_muRef <- res_all_muRef %>%
