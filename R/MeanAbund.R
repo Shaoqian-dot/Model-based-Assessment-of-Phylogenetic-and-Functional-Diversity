@@ -73,7 +73,7 @@ MeanAbund <- function (Subsample, DM, quantile, p,
  #                                                            Effect_high, Effect_low)
  
  Effect_low <- mu1[spRef]
- Effect_high <- plogis(qlogis(mu[spRef]) + beta)
+ Effect_high <- plogis(qlogis(mu1[spRef]) + beta)
  
  mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_low,  Effect_high,
                                                            Effect_high,  Effect_high)
