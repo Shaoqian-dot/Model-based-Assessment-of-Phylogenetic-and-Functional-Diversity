@@ -70,12 +70,11 @@ sigma2 <- NA
 Corr <- 1
 
 nsim = 2 # The number of simulations
-step <- length(p) * length(r) * length(families) * length(Eigen)
 
 seed <- data.frame(
   seed = seq(
     from = 1000,
-    by = step,
+    by = 1,
     length.out = nsim
   ))
 res_all <- seed |>

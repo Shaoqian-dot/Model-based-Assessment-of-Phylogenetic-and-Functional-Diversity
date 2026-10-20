@@ -42,19 +42,37 @@ MeanAbund <- function (Subsample, DM, quantile, p,
  mu2 <- mu1
  mu3 <- mu1
  mu4 <- mu1
- eta_Mean <- mean(qlogis(mu1))
-
- mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean - (beta/2)), plogis(eta_Mean + (beta/2)),
-                                                  plogis(eta_Mean + (beta/2)), plogis(eta_Mean + (beta/2)))
+ # eta_Mean <- mean(qlogis(mu1))
+ # 
+ # mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean - (beta/2)), plogis(eta_Mean + (beta/2)),
+ #                                                  plogis(eta_Mean + (beta/2)), plogis(eta_Mean + (beta/2)))
+ # 
+ # mu2[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean + beta/2), plogis(eta_Mean - beta/2),
+ #                                                  plogis(eta_Mean + beta/2), plogis(eta_Mean + beta/2))
+ # 
+ # mu3[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean + beta/2), plogis(eta_Mean + beta/2),
+ #                                                  plogis(eta_Mean - beta/2), plogis(eta_Mean + beta/2))
+ # 
+ # mu4[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean + beta/2), plogis(eta_Mean + beta/2),
+ #                                                  plogis(eta_Mean + beta/2), plogis(eta_Mean - beta/2))
  
- mu2[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean + beta/2), plogis(eta_Mean - beta/2),
-                                                  plogis(eta_Mean + beta/2), plogis(eta_Mean + beta/2))
+ mu_Mean <- mean(mu1)
+ Effect_low <- plogis(qlogis(mu_Mean) - (beta/2))
+ Effect_high <- plogis(qlogis(mu_Mean) + (beta/2))
  
- mu3[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean + beta/2), plogis(eta_Mean + beta/2),
-                                                  plogis(eta_Mean - beta/2), plogis(eta_Mean + beta/2))
+ mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_low,  Effect_high,
+                                                           Effect_high,  Effect_high)
  
- mu4[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean + beta/2), plogis(eta_Mean + beta/2),
-                                                  plogis(eta_Mean + beta/2), plogis(eta_Mean - beta/2))
+ mu2[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c( Effect_high, Effect_low,
+                                                            Effect_high,  Effect_high)
+ 
+ mu3[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c( Effect_high,  Effect_high,
+                                                           Effect_low,  Effect_high)
+ 
+ mu4[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_high,  Effect_high,
+                                                            Effect_high, Effect_low)
+ 
+ 
  mu5 <- plogis(qlogis(mu1) + alpha)
  
  MeanMatrix <- rbind(mu1, mu2, mu3, mu4, mu5)

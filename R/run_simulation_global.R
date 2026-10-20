@@ -24,16 +24,47 @@ run_simulation <- function(
     TruePara,
     FactorLoading
 ){
+  
   grid <- tidyr::expand_grid(
     p = p,
     r = r,
     family_type = family_type,
     Eigen = Eigen
-  ) |>
+  )
+  
+  n_cells <- nrow(grid)
+  
+  grid <- grid |>
     dplyr::mutate(
       sim = dplyr::row_number(),
-      seed_i = seed + sim - 1
+      seed_i = (seed - 1L) * n_cells + sim
     )
+  
+  # grid <- tidyr::expand_grid(
+  #   p = p,
+  #   r = r,
+  #   family_type = family_type,
+  #   Eigen = Eigen
+  # ) |>
+  #   dplyr::mutate(
+  #     sim = dplyr::row_number(),
+  #     seed_i = seed + sim - 1
+  #   )
+  # Generate one shared TruePara subsample for each p
+  p_group <- sort(unique(grid$p))
+  
+  subsample_by_p <- stats::setNames(
+    lapply(p_group, function(p_i) {
+      set.seed(seed + p_i)
+      
+      sample(
+        TruePara,
+        size = p_i,
+        replace = FALSE
+      )
+    }),
+    as.character(p_group)
+  )
   
   res <- purrr::pmap_dfr(
     grid,
@@ -48,104 +79,107 @@ run_simulation <- function(
       )
 
       timing <- system.time({
-        if (Swap) {
-
-          if (Absence == TRUE){
-            # Sub-sampling and build the subtree
-            subsample <- sample (TruePara, p)
-            subtree <- keep.tip(tree, names(subsample))
+        # Data Generation
+        {
+          if (Swap) {
             
-            # Distance Matrix
-            DM <- cophenetic.phylo(subtree)
-            
-            # Similarity Matrix
-            S <- max(DM) - DM
-            J <- diag(1, p) - 1/p * matrix(1, p, p)
-            S_J <- J %*% S %*% J
-            
-            # The data simulated include correlations definitely.
-            dat <- getData(
-              q = q,
-              p = p,
-              alpha = alpha,
-              beta = beta,
-              r = r,
-              quantile = quantile,
-              Eigen = Eigen,
-              Distribution = family_type,
-              Absence = Absence,
-              Subsample = subsample,
-              FactorLoading = FactorLoading,
-              DM_phy_func = DM
-            )
+            if (Absence == TRUE){
+              # Sub-sampling and build the subtree
+              subsample <- subsample_by_p[[as.character(p)]]
+              subtree <- keep.tip(tree, names(subsample))
+              
+              # Distance Matrix
+              DM <- cophenetic.phylo(subtree)
+              
+              # Similarity Matrix
+              S <- max(DM) - DM
+              J <- diag(1, p) - 1/p * matrix(1, p, p)
+              S_J <- J %*% S %*% J
+              
+              # The data simulated include correlations definitely.
+              dat <- getData(
+                q = q,
+                p = p,
+                alpha = alpha,
+                beta = beta,
+                r = r,
+                quantile = quantile,
+                Eigen = Eigen,
+                Distribution = family_type,
+                Absence = Absence,
+                Subsample = subsample,
+                FactorLoading = FactorLoading,
+                DM_phy_func = DM
+              )
+              
+            } else {
+              
+              NOPS <- switch(
+                as.character(p),
+                "5" = 1,
+                "10" = 2,
+                "20" = 4,
+                "40" = 8,
+                "80" = 16,
+                "160" = 32,
+                stop("Unknown p")
+              )
+              
+              DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
+              VC_phy_func <- 1 - DM_phy_func / max(DM_phy_func)
+              
+              I_p <- diag(p)
+              J <- I_p - 1 / p * matrix(1, p, p)
+              S_J <- t(J) %*% VC_phy_func %*% J
+              
+              eig <- spectral_decomp(VC_phy_func = S_J)
+              V_J <- eig$P
+              
+              cat(
+                "Running:",
+                signal_type,
+                "| family =", family_type,
+                "| p =", p,
+                "| r =", r,
+                "| Eigen =", Eigen,
+                "\n"
+              )
+              dat <- getData(
+                DM_phy_func = DM_phy_func,
+                NOPS = NOPS,
+                q = q,
+                alpha = alpha,
+                beta = beta,
+                r = r,
+                quantile = quantile,
+                Corr = Corr,
+                P = V_J[, 1:(p - 1)],
+                Eigen = Eigen,
+                Distribution = family_type,
+                p = p
+              )
+              
+            }
+            dat_long <- dat$yX
+            dat_wide <- dat$abundance
             
           } else {
             
-            NOPS <- switch(
-              as.character(p),
-              "5" = 1,
-              "10" = 2,
-              "20" = 4,
-              "40" = 8,
-              "80" = 16,
-              "160" = 32,
-              stop("Unknown p")
-            )
-            
-            DM_phy_func <- getPhyloMatrix(tree = tree, m = p)
-            VC_phy_func <- 1 - DM_phy_func / max(DM_phy_func)
-            
-            I_p <- diag(p)
-            J <- I_p - 1 / p * matrix(1, p, p)
-            S_J <- t(J) %*% VC_phy_func %*% J
-            
-            eig <- spectral_decomp(VC_phy_func = S_J)
-            V_J <- eig$P
-            
-            cat(
-              "Running:",
-              signal_type,
-              "| family =", family_type,
-              "| p =", p,
-              "| r =", r,
-              "| Eigen =", Eigen,
-              "\n"
-            )
-            dat <- getData(
-              DM_phy_func = DM_phy_func,
-              NOPS = NOPS,
-              q = q,
-              alpha = alpha,
-              beta = beta,
+            dat <- generate_data(
+              p = p,
               r = r,
-              quantile = quantile,
-              Corr = Corr,
-              P = V_J[, 1:(p - 1)],
-              Eigen = Eigen,
-              Distribution = family_type,
-              p = p
+              signal = signal_type,
+              family = family_type,
+              c_val = c_val,
+              sigma2 = sigma2,
+              tree = tree,
+              V = V_J
             )
-  
+            
+            dat_long <- dat$long
+            dat_wide <- dat$wide[, -1]
+            
           }
-          dat_long <- dat$yX
-          dat_wide <- dat$abundance
-
-        } else {
-
-          dat <- generate_data(
-            p = p,
-            r = r,
-            signal = signal_type,
-            family = family_type,
-            c_val = c_val,
-            sigma2 = sigma2,
-            tree = tree,
-            V = V_J
-          )
-
-          dat_long <- dat$long
-          dat_wide <- dat$wide[, -1]
-
         }
 
         model_res <- fit_models(
