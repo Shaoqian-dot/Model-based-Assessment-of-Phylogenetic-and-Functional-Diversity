@@ -56,9 +56,24 @@ MeanAbund <- function (Subsample, DM, quantile, p,
  # mu4[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(plogis(eta_Mean + beta/2), plogis(eta_Mean + beta/2),
  #                                                  plogis(eta_Mean + beta/2), plogis(eta_Mean - beta/2))
  
- mu_Mean <- mean(mu1)
- Effect_low <- plogis(qlogis(mu_Mean) - (beta/2))
- Effect_high <- plogis(qlogis(mu_Mean) + (beta/2))
+ # mu_Mean <- mean(mu1)
+ # Effect_low <- plogis(qlogis(mu_Mean) - (beta/2))
+ # Effect_high <- plogis(qlogis(mu_Mean) + (beta/2))
+ # 
+ # mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_low,  Effect_high,
+ #                                                           Effect_high,  Effect_high)
+ # 
+ # mu2[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c( Effect_high, Effect_low,
+ #                                                            Effect_high,  Effect_high)
+ # 
+ # mu3[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c( Effect_high,  Effect_high,
+ #                                                           Effect_low,  Effect_high)
+ # 
+ # mu4[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_high,  Effect_high,
+ #                                                            Effect_high, Effect_low)
+ 
+ Effect_low <- mu1[spRef]
+ Effect_high <- plogis(qlogis(mu[spRef]) + beta)
  
  mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_low,  Effect_high,
                                                            Effect_high,  Effect_high)
@@ -67,10 +82,10 @@ MeanAbund <- function (Subsample, DM, quantile, p,
                                                             Effect_high,  Effect_high)
  
  mu3[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c( Effect_high,  Effect_high,
-                                                           Effect_low,  Effect_high)
+                                                            Effect_low,  Effect_high)
  
  mu4[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_high,  Effect_high,
-                                                            Effect_high, Effect_low)
+                                                           Effect_high, Effect_low)
  
  
  mu5 <- plogis(qlogis(mu1) + alpha)
