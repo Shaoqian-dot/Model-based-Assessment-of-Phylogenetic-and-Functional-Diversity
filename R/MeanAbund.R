@@ -164,7 +164,7 @@ MeanAbund <- function (Subsample, DM, quantile, p,
  MeanMatrix <- rbind(mu1, mu2, mu3, mu4, mu5)
  rownames(MeanMatrix) <- paste0('com', 1 : nrow(MeanMatrix))
  
- Rao <- rowSums(MeanMatrix %*% DM * MeanMatrix)
+ # Rao <- rowSums(MeanMatrix %*% DM * MeanMatrix)
  # Correlation
  S <- max(DM) - DM
  J <- diag(1, p) - 1/p * matrix(1, p, p)
@@ -175,11 +175,9 @@ MeanAbund <- function (Subsample, DM, quantile, p,
  stopifnot(identical(colnames(MeanMatrix), colnames(U_corr)))
  
  MeanMatrix_full <- plogis(qlogis(MeanMatrix[rep(1: nrow(MeanMatrix), each = r), ]) + U_corr)
- return(MeanMatrix_full)
- # return(list(MeanMatrix_full = MeanMatrix_full,
- #             Rao = Rao,
- #             sp_Target = sp_Target,
- #             MeanMatrix = MeanMatrix))
+ #return(MeanMatrix_full)
+ return(list(MeanMatrix_full = MeanMatrix_full,
+             MeanMatrix = MeanMatrix))
 
  }
 

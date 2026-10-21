@@ -116,5 +116,6 @@ getRaosQ <- function(abundance, DM_phy_func, use_randomization, q) {
   names(p_value) <- paste0(2:q, "VS1")
   
   # Return vector of p-values for group comparisons
-  return(p_value)
+  return(p_value
+         )
 }

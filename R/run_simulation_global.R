@@ -174,7 +174,13 @@ run_simulation <- function(
             }
             dat_long <- dat$yX
             dat_wide <- dat$abundance
-            
+            MeanMatrix <- dat$MeanMatrix
+            stopifnot(
+              identical(colnames(MeanMatrix), rownames(DM)),
+              identical(colnames(MeanMatrix), colnames(DM))
+            )
+            RaosQ_ComVal <- rowSums(MeanMatrix %*% DM * MeanMatrix)
+            names(RaosQ_ComVal) <- rownames(MeanMatrix)
           } else {
             
             dat <- generate_data(
@@ -243,7 +249,7 @@ run_simulation <- function(
           use_randomization = 0,
           q = q
         )
-
+        
         rao_rand <- getRaosQ(
           abundance = dat_wide,
           DM_phy_func = DM,
@@ -267,6 +273,19 @@ run_simulation <- function(
         ) %>%
           dplyr::mutate(method = "raoQ")
 
+        # result <- dplyr::bind_rows(
+        #   model_res,
+        #   rao_res
+        # ) %>%
+        #   dplyr::mutate(
+        #     seed = seed_i,
+        #     family = family_type,
+        #     p = p,
+        #     r = r,
+        #     Eigen = Eigen,
+        #     eta_bar = mean(qlogis(subsample)),
+        #     .before = 1
+        #   )
         result <- dplyr::bind_rows(
           model_res,
           rao_res
@@ -277,6 +296,20 @@ run_simulation <- function(
             p = p,
             r = r,
             Eigen = Eigen,
+            
+            RaosQ_reference = unname(
+              .env$RaosQ_ComVal["com1"]
+            ),
+            
+            RaosQ_ComVal = unname(
+              .env$RaosQ_ComVal[
+                paste0("com", as.character(.data$com))
+              ]
+            ),
+            
+            delta_RaosQ = RaosQ_ComVal - RaosQ_reference,
+            absolute_delta_RaosQ = abs(delta_RaosQ),
+            
             eta_bar = mean(qlogis(subsample)),
             .before = 1
           )
