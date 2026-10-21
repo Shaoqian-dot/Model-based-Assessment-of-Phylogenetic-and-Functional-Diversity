@@ -10,10 +10,11 @@
 getData <- function (DM_phy_func, NOPS, q, 
                      alpha, beta, r, quantile,
                      Corr, P, Eigen, Distribution, p, 
-                     Absence, Subsample, FactorLoading){
+                     Absence, Subsample, FactorLoading, NOS){
   if (Absence == TRUE) {
     Mean_matrix_full <- MeanAbund (Subsample = Subsample, DM = DM_phy_func, quantile = quantile, p = p, 
-                           r = r, alpha = alpha, beta = beta, Eigen = Eigen, FactorLoading = FactorLoading)
+                           r = r, alpha = alpha, beta = beta, Eigen = Eigen, 
+                           FactorLoading = FactorLoading, NOS = NOS)
   } else {
     # Determine which species pairs will have diversity changes (small/no/big)
     # Returns a matrix/list of indices for changing species pairs

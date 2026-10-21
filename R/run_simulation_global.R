@@ -84,6 +84,17 @@ run_simulation <- function(
           if (Swap) {
             
             if (Absence == TRUE){
+              NOS <- switch(
+                as.character(p),
+                "5" = 1,
+                "10" = 2,
+                "20" = 4,
+                "40" = 8,
+                "80" = 16,
+                "160" = 32,
+                stop("Unknown p")
+              )
+              
               # Sub-sampling and build the subtree
               subsample <- subsample_by_p[[as.character(p)]]
               subtree <- keep.tip(tree, names(subsample))
@@ -109,7 +120,8 @@ run_simulation <- function(
                 Absence = Absence,
                 Subsample = subsample,
                 FactorLoading = FactorLoading,
-                DM_phy_func = DM
+                DM_phy_func = DM,
+                NOS = NOS
               )
               
             } else {

@@ -62,6 +62,7 @@ alpha <- log(9/4)
 beta <- log(2)
 quantile <- 0.35
 Eigen <- 3
+NOS <- 1
 
 # Other parameters from the previous simulations
 signal <- NA
