@@ -1,0 +1,165 @@
+---
+title: "Issue with the Intended Small and Large Rao's Q Simulation Scenarios"
+author: "Shaoqian Huang"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  digits = 4
+)
+```
+
+# Purpose
+
+This note documents a problem identified in the current simulation design. The simulation swaps the mean abundances of species selected according to their phylogenetic distances. The intended interpretation is:
+
+- `com1`: reference community;
+- `com2`: swap between a very close pair of species, intended to produce no or negligible change in Rao's Q;
+- `com3`: swap between a moderately separated pair, intended to produce a small change in Rao's Q;
+- `com4`: swap between a distant pair, intended to produce a large change in Rao's Q.
+
+The example below shows that swapping a more distant species pair does not necessarily produce a larger change in community-level Rao's Q. Thus, the current simulation directly produces *close-pair* and *far-pair* swaps, but it does not guarantee *small* and *large* Rao's Q changes.
+
+# Example from the simulation
+
+## Mean-abundance matrix
+
+```{r define-mean-matrix}
+species <- c(
+  "Solidago.virgaurea",
+  "Centaurea.arenaria",
+  "Seseli.annuum",
+  "Phleum.phleoides",
+  "Koeleria.glauca"
+)
+
+MeanMatrix <- matrix(
+  c(
+    0.1018070, 0.3119514, 0.3119514, 0.3119514, 0.3752730,
+    0.3119514, 0.1018070, 0.3119514, 0.3119514, 0.3752730,
+    0.3119514, 0.3119514, 0.1018070, 0.3119514, 0.3752730,
+    0.3119514, 0.3119514, 0.3119514, 0.1018070, 0.3752730,
+    0.2032059, 0.5049794, 0.5049794, 0.5049794, 0.5747528
+  ),
+  nrow = 5,
+  byrow = TRUE,
+  dimnames = list(
+    paste0("com", 1:5),
+    species
+  )
+)
+
+knitr::kable(MeanMatrix, digits = 4)
+```
+
+Relative to `com1`, the relevant swaps are:
+
+- `com2`: swap the means of *Solidago virgaurea* and *Centaurea arenaria*;
+- `com3`: swap the means of *Solidago virgaurea* and *Seseli annuum*;
+- `com4`: swap the means of *Solidago virgaurea* and *Phleum phleoides*.
+
+`com5` represents a separate overall-abundance scenario and is not part of the close-versus-far swap comparison.
+
+## Phylogenetic tree and distance matrix
+
+```{r define-distance-matrix}
+DM <- matrix(
+  c(
+      0.00000,  68.56045, 187.46042, 271.51613, 271.51613,
+     68.56045,   0.00000, 187.46042, 271.51613, 271.51613,
+    187.46042, 187.46042,   0.00000, 271.51613, 271.51613,
+    271.51613, 271.51613, 271.51613,   0.00000,  33.78658,
+    271.51613, 271.51613, 271.51613,  33.78658,   0.00000
+  ),
+  nrow = 5,
+  byrow = TRUE,
+  dimnames = list(species, species)
+)
+
+knitr::kable(DM, digits = 2)
+```
+
+The distances between the species involved in the swaps increase as intended:
+
+```{r pairwise-distances}
+swap_information <- data.frame(
+  community = c("com2", "com3", "com4"),
+  swapped_species = c(
+    "Solidago.virgaurea / Centaurea.arenaria",
+    "Solidago.virgaurea / Seseli.annuum",
+    "Solidago.virgaurea / Phleum.phleoides"
+  ),
+  pairwise_distance = c(
+    DM["Solidago.virgaurea", "Centaurea.arenaria"],
+    DM["Solidago.virgaurea", "Seseli.annuum"],
+    DM["Solidago.virgaurea", "Phleum.phleoides"]
+  ),
+  intended_Rao_change = c("No/negligible", "Small", "Large")
+)
+
+knitr::kable(swap_information, digits = 2)
+```
+
+# Rao's Q results
+
+Rao's Q is calculated here without normalising the mean abundances:
+
+```{r calculate-rao}
+stopifnot(
+  identical(colnames(MeanMatrix), rownames(DM)),
+  identical(colnames(MeanMatrix), colnames(DM))
+)
+
+Rao <- rowSums(MeanMatrix %*% DM * MeanMatrix)
+Rao
+```
+
+The changes relative to `com1` are:
+
+```{r rao-summary}
+rao_summary <- data.frame(
+  community = names(Rao),
+  Rao_Q = unname(Rao),
+  change_from_com1 = unname(Rao - Rao["com1"]),
+  absolute_change = unname(abs(Rao - Rao["com1"]))
+)
+
+knitr::kable(rao_summary, digits = 4)
+```
+
+# Problem identified
+
+Although the pairwise distance is larger for the `com4` swap than for the `com3` swap, the realised Rao's Q changes are:
+
+```{r print-main-result, echo=FALSE, results='asis'}
+cat(
+  sprintf(
+    "- `com3`: absolute change = **%.4f**;\n- `com4`: absolute change = **%.4f**.",
+    rao_summary$absolute_change[rao_summary$community == "com3"],
+    rao_summary$absolute_change[rao_summary$community == "com4"]
+  )
+)
+```
+
+Therefore, this example gives a substantially larger Rao's Q change for `com3` than for `com4`, which is the reverse of the intended small-versus-large ordering.
+
+This is not changed by abundance normalisation for `com1`--`com4`, because these four rows contain the same abundance values in different species positions and consequently have equal total abundance.
+
+# Point for discussion
+
+The current labels "small Rao's Q change" and "large Rao's Q change" are not guaranteed by selecting species with smaller and larger pairwise phylogenetic distances. The current procedure guarantees only that the swapped species are relatively close or far apart.
+
+Before running the final simulation, a decision is needed between the following interpretations:
+
+1. Retain the current swap mechanism and describe the scenarios as close-pair and far-pair abundance swaps; or
+2. Require small and large realised changes in Rao's Q, and select or validate swaps using the resulting change in Rao's Q for each simulated community.
+
+A useful preliminary diagnostic would be to record the realised Rao's Q change in every simulation replicate and calculate how often the intended ordering is obtained.

@@ -184,6 +184,20 @@ files_muMeanOverll <- list.files(
   full.names = TRUE
 )
 
+files_muMeanOverll_p80 <- list.files(
+  here("output", "Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE_p_80_muMeanOverall"),
+  pattern = "\\.rds$",
+  recursive = TRUE,
+  full.names = TRUE
+)
+
+files_muMeanOverll_MS_p80 <- list.files(
+  here("output", "Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE_p_80_muMeanOverall_MS"),
+  pattern = "\\.rds$",
+  recursive = TRUE,
+  full.names = TRUE
+)
+
 cat("Number of files found:", length(files), "\n")
 
 if(length(files) == 0){
@@ -239,7 +253,86 @@ res_all_muMeanOverall <- purrr::map_dfr(files_muMeanOverll, function(f) {
   
   x
 })
+res_all_muMeanOverall_p80 <- purrr::map_dfr(files_muMeanOverll_p80, function(f) {
+  
+  x <- readRDS(f)
+  
+  # Rename old column to the new name
+  if ("p_values" %in% names(x)) {
+    x <- dplyr::rename(x, pvalue = p_values)
+  }
+  
+  x
+})
+
+res_all_muMeanOverall_MS_p80 <- purrr::map_dfr(files_muMeanOverll_MS_p80, function(f) {
+  
+  x <- readRDS(f)
+  
+  # Rename old column to the new name
+  if ("p_values" %in% names(x)) {
+    x <- dplyr::rename(x, pvalue = p_values)
+  }
+  
+  x
+})
 ```
+## summarize the Simulation Results based on mu Overall Mean (p80, multiple swaps)
+```{r}
+res_summary_muMeanOverall_MS_p80 <- res_all_muMeanOverall_MS_p80 %>%
+  group_by(
+    family,
+    p,
+    r,
+    model,
+    test,
+    Eigen,
+    com,
+    method,
+    axis_method) %>%
+      summarise(
+        power = mean (pvalue < 0.05, na.rm = TRUE),
+        n_jobs = n(),
+        .groups = 'drop'
+      )
+  PanelPlot (x_var = "r",
+           q_fixed = 5,
+           eigen_target = 3,
+           axis_method_label = "Method3",
+           levels_p <- c(80),
+           levels_r <- c(4, 8, 16, 32, 64),
+           res_summary = res_summary_muMeanOverall_MS_p80) 
+```
+
+
+
+## summarize the Simulation Results based on mu Overall Mean (p80)
+```{r}
+res_summary_muMeanOverall_p80 <- res_all_muMeanOverall_p80 %>%
+  group_by(
+    family,
+    p,
+    r,
+    model,
+    test,
+    Eigen,
+    com,
+    method,
+    axis_method) %>%
+      summarise(
+        power = mean (pvalue < 0.05, na.rm = TRUE),
+        n_jobs = n(),
+        .groups = 'drop'
+      )
+  PanelPlot (x_var = "r",
+           q_fixed = 5,
+           eigen_target = 3,
+           axis_method_label = "Method3",
+           levels_p <- c(80),
+           levels_r <- c(4, 8, 16, 32, 64),
+           res_summary = res_summary_muMeanOverall_p80) 
+```
+
 ## summarize the Simulation Results based on mu Overall Mean
 ```{r}
 res_summary_muMeanOverall <- res_all_muMeanOverall %>%

@@ -121,7 +121,8 @@ run_simulation <- function(
                 Subsample = subsample,
                 FactorLoading = FactorLoading,
                 DM_phy_func = DM,
-                NOS = NOS
+                NOS = NOS,
+                V_J = eigen(S_J)$vectors[, -p]
               )
               
             } else {

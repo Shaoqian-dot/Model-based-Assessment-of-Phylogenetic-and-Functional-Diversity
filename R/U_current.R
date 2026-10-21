@@ -1,4 +1,4 @@
-U <- function(p, r, q, P = NA, Eigen, sp_Sim = NA, FactorLoading = NA){
+U <- function(p, r, q, V_J = NA, Eigen, sp_Sim = NA, FactorLoading = NA){
   
   # Initialize U matrix of size (r*q) x p
   U <- matrix(NA, r * q, p)
@@ -7,11 +7,11 @@ U <- function(p, r, q, P = NA, Eigen, sp_Sim = NA, FactorLoading = NA){
   # Select which pair of eigenvectors to use
   if (Eigen == 1){
     
-    Lambda <- P[, c(1, 2)]   # Use the first two eigenvectors
+    Lambda <- V_J[, c(1, 2)]   # Use the first two eigenvectors
     
       } else if(Eigen == 2) {
     
-    Lambda <- P[, (ncol(P)-1):ncol(P)]  # Use the last two eigenvectors
+    Lambda <- V_J[, (ncol(V_J)-1):ncol(V_J)]  # Use the last two eigenvectors
   
   } else if (Eigen == 3) {
     Lambda <- FactorLoading[sp_Sim, ]

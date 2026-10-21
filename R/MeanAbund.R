@@ -4,7 +4,7 @@
 
 MeanAbund <- function (Subsample, DM, quantile, p,
                        r, alpha, beta, Eigen, 
-                       FactorLoading, NOS) { # NOS : number of swaps
+                       FactorLoading, NOS, V_J) { # NOS : number of swaps
  
 #################################################### Experiment Parameters
   # TruePara <- mean_abundance
@@ -169,7 +169,7 @@ MeanAbund <- function (Subsample, DM, quantile, p,
  S <- max(DM) - DM
  J <- diag(1, p) - 1/p * matrix(1, p, p)
  U_corr <- U(p = p, r = r, q = nrow(MeanMatrix), Eigen = Eigen,
-             FactorLoading = FactorLoading, sp_Sim = sp)
+             FactorLoading = FactorLoading, sp_Sim = sp, V_J = V_J)
  
  # Full Mean Matrix
  stopifnot(identical(colnames(MeanMatrix), colnames(U_corr)))
