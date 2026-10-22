@@ -51,7 +51,7 @@ load(file.path('data', "Para_PCV.RData"))
 ## Main simulation runner
 ###########################################################
 axis_method <- 'Method3'
-families <- c("binomial")
+families <- c("poisson")
 globalTest <- FALSE
 test <- c("Both") # Or LRT
 Swap = TRUE

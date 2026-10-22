@@ -14,7 +14,7 @@ getData <- function (DM_phy_func, NOPS, q,
   if (Absence == TRUE) {
     Mean_matrix <- MeanAbund (Subsample = Subsample, DM = DM_phy_func, quantile = quantile, p = p, 
                            r = r, alpha = alpha, beta = beta, Eigen = Eigen, 
-                           FactorLoading = FactorLoading, NOS = NOS, V_J = V_J)
+                           FactorLoading = FactorLoading, NOS = NOS, V_J = V_J, family_type = Distribution)
     Mean_matrix_full <- Mean_matrix$MeanMatrix_full
     MeanMatrix <- Mean_matrix$MeanMatrix
   } else {
@@ -29,9 +29,9 @@ getData <- function (DM_phy_func, NOPS, q,
                                     Corr = Corr, P = P, Eigen = Eigen, Distribution = Distribution, p = p)
   }
   
-  # Simulate species abundance using a Bernoulli/binomial process
+  # Simulate species abundance using a Bernoulli process
   # Each element is 0 or 1, probability given by corresponding element in Mean_matrix_full
-  if (Distribution == 'binomial') {
+  if (Distribution == 'binomial') { 
     
     abundance <- matrix(
       rbinom(length(Mean_matrix_full), 1, as.vector(Mean_matrix_full)),

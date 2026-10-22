@@ -4,7 +4,7 @@
 
 MeanAbund <- function (Subsample, DM, quantile, p,
                        r, alpha, beta, Eigen, 
-                       FactorLoading, NOS, V_J) { # NOS : number of swaps
+                       FactorLoading, NOS, V_J, family_type) { # NOS : number of swaps
  
 #################################################### Experiment Parameters
   # TruePara <- mean_abundance
@@ -14,7 +14,20 @@ MeanAbund <- function (Subsample, DM, quantile, p,
   # beta <- 2.426285
   # model <- model_updated
 ####################################################  
- sp <- colnames(DM)
+ 
+  #family_type <- "binomial"  # 或 "poisson"
+  
+  family_obj <- switch(
+    family_type,
+    binomial = stats::binomial(link = "logit"),
+    poisson  = stats::poisson(link = "log"),
+    stop("Unsupported family_type: ", family_type)
+  )
+  
+  link_fun <- family_obj$linkfun
+  inv_link <- family_obj$linkinv
+  
+  sp <- colnames(DM)
  
  # Randomly Choose Species to Swap
  ## Choose All the Pairs of Indexes Pointing to phylogenetically/functionally species
@@ -68,8 +81,8 @@ MeanAbund <- function (Subsample, DM, quantile, p,
      
    }
    
-   Effect_low  <- plogis(qlogis(0.1848) - (beta/2)) # 0.1848 is the overall mean abundance across the 115 species
-   Effect_high <- plogis(qlogis(0.1848) + (beta/2))
+   Effect_low  <- inv_link(link_fun(0.1848) - (beta/2)) # 0.1848 is the overall mean abundance across the 115 species
+   Effect_high <- inv_link(link_fun(0.1848) + (beta/2))
    
    mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_low,  Effect_high,
                                                              Effect_high,  Effect_high)
@@ -159,7 +172,7 @@ MeanAbund <- function (Subsample, DM, quantile, p,
    # )
  }
  
- mu5 <- plogis(qlogis(mu1) + alpha)
+ mu5 <- inv_link(link_fun(mu1) + alpha)
  
  MeanMatrix <- rbind(mu1, mu2, mu3, mu4, mu5)
  rownames(MeanMatrix) <- paste0('com', 1 : nrow(MeanMatrix))
@@ -174,7 +187,7 @@ MeanAbund <- function (Subsample, DM, quantile, p,
  # Full Mean Matrix
  stopifnot(identical(colnames(MeanMatrix), colnames(U_corr)))
  
- MeanMatrix_full <- plogis(qlogis(MeanMatrix[rep(1: nrow(MeanMatrix), each = r), ]) + U_corr)
+ MeanMatrix_full <- inv_link(link_fun(MeanMatrix[rep(1: nrow(MeanMatrix), each = r), ]) + U_corr)
  #return(MeanMatrix_full)
  return(list(MeanMatrix_full = MeanMatrix_full,
              MeanMatrix = MeanMatrix))
