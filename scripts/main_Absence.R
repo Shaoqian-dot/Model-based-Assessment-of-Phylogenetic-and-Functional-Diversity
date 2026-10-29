@@ -51,18 +51,18 @@ load(file.path('data', "Para_PCV.RData"))
 ## Main simulation runner
 ###########################################################
 axis_method <- 'Method3'
-families <- c("poisson")
+families <- c("binomial")
 globalTest <- FALSE
 test <- c("Both") # Or LRT
 Swap = TRUE
-p <- c(5)
+p <- c(10)
 q <- 5
-r <- c(64)
+r <- c(8)
 alpha <- log(9/4)
 beta <- log(2)
 quantile <- 0.35
-Eigen <- 2
-NOS <- 1
+Eigen <- 3
+NOS <- 2
 
 # Other parameters from the previous simulations
 signal <- NA
@@ -70,7 +70,7 @@ c_val <- NA
 sigma2 <- NA
 Corr <- 1
 
-nsim = 2 # The number of simulations
+nsim = 1 # The number of simulations
 
 seed <- data.frame(
   seed = seq(

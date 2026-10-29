@@ -15,3 +15,8 @@ rmarkdown::render(
   params = list(model = 3),
   output_file = "Model3.html"
 )
+
+rmarkdown::render(
+  input = "exploration/Solve Model Convergence Issue.Rmd",
+  output_file = "exploration/Solve-Model-Convergence-Issue_r64.html"
+)

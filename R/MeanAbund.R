@@ -81,9 +81,10 @@ MeanAbund <- function (Subsample, DM, quantile, p,
      
    }
    
-   Effect_low  <- inv_link(link_fun(0.1848) - (beta/2)) # 0.1848 is the overall mean abundance across the 115 species
-   Effect_high <- inv_link(link_fun(0.1848) + (beta/2))
-   
+   # Effect_low  <- inv_link(link_fun(0.1848) - (beta/2)) # 0.1848 is the overall mean abundance across the 115 species
+   # Effect_high <- inv_link(link_fun(0.1848) + (beta/2))
+   Effect_low <- mu1[spRef]
+   Effect_high <- inv_link(link_fun(mu1[spRef]) + beta)
    mu1[c(spRef, spRef_equal, spRef_Small, spRef_Large)] <- c(Effect_low,  Effect_high,
                                                              Effect_high,  Effect_high)
    

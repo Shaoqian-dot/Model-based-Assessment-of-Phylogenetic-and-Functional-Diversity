@@ -1,0 +1,295 @@
+---
+title: "Solve Model Convergence Issue_r8"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(ape)
+library(MASS)
+library(glmmTMB)
+library(dplyr)   
+source('../R/getData_current.R')
+source('../R/MeanAbund.R')
+source('../R/U_current.R')
+source('../R/fit_model_current2.R')
+source('../R/get_num.eig.R')
+load('../data/Para_PCV.RData')
+
+find_npd_seed <- function(first_seed = 1L, max_attempts = 1000L) {
+  target <- "Model convergence problem; non-positive-definite Hessian matrix"
+  J <- diag(p) - matrix(1 / p, p, p)
+
+  for (i in seq_len(max_attempts)) {
+    seed_i <- first_seed + i - 1L
+    set.seed(seed_i)
+
+    # Subsample and matrices: redo these for every seed
+    Subsample <- sample(TruePara, p)
+    subtree <- keep.tip(tree, names(Subsample))
+    DM <- cophenetic.phylo(subtree)
+    S <- max(DM) - DM
+    S_J <- J %*% S %*% J
+
+    eig <- eigen(S_J)
+    val_num.eig <- get_num.eig(
+      Methods = "Method3",
+      Methods_para = NA,
+      D = diag(eig$values)[-p, -p]
+    )
+
+    # Data generation
+    sim_data <- getData(
+      DM_phy_func = DM,
+      q = q,
+      alpha = alpha,
+      beta = beta,
+      r = r,
+      quantile = quantile,
+      Eigen = Eigen,
+      Distribution = fam_type,
+      p = p,
+      Absence = TRUE,
+      Subsample = Subsample,
+      FactorLoading = FactorLoading,
+      NOS = NOPS
+    )
+
+    # Modelling
+    seen_warnings <- character()
+
+    Model <- withCallingHandlers(
+      fit_model(
+        type = "p_mid",
+        matrix_type = "P_J",
+        rr = TRUE,
+        LV_num = 2,
+        yX = sim_data$yX,
+        P_J = eig$vectors,
+        val_num.eig = val_num.eig,
+        Distribution = fam_type,
+        null = FALSE,
+        p = p,
+        site = FALSE
+      ),
+      warning = function(w) {
+        seen_warnings <<- c(seen_warnings, conditionMessage(w))
+      }
+    )
+
+    # fit_model() may capture/muffle warnings internally, so check both
+    # its returned messages and the fitted model's Hessian status.
+    messages <- unique(c(seen_warnings, Model$warning_msgs))
+
+    found <- any(grepl(target, messages, fixed = TRUE)) ||
+      isFALSE(Model$pdHess)
+
+    if (found) {
+      message("Found at seed ", seed_i, " (attempt ", i, ")")
+
+      return(list(
+        seed = seed_i,
+        attempt = i,
+        warnings = messages,
+        Subsample = Subsample,
+        DM = DM,
+        S_J = S_J,
+        data = sim_data,
+        Model = Model
+      ))
+    }
+  }
+
+  stop("No non-positive-definite Hessian found in ",
+       max_attempts, " attempts.")
+}
+```
+
+# Parameters
+```{r}
+set.seed(1)
+p <- 10
+NOPS <- 2# Number of pair of swaps 
+r <- 8
+q <- 5
+alpha <- log(9 / 4)
+beta <- log(4)
+
+Subsample <- sample(TruePara, p)
+subtree <- keep.tip(tree, names(Subsample))
+DM <- cophenetic.phylo(subtree)
+S <- max(DM) - DM
+J <- diag(1, p) - (1/p) * matrix(1, p, p)
+S_J <- J %*% S %*% J
+
+quantile <- 0.35
+Eigen <- 3
+fam_type <- 'binomial'
+Absence <- 'TRUE'
+FactorLoading <- Lambda
+val_num.eig <- get_num.eig(Methods = 'Method3', 
+                           Methods_para = NA,
+                           D = diag(eigen(S_J)$values)[-p, -p])
+```
+
+<!-- # Data set searching for modelling warning -->
+<!-- ```{r} -->
+<!-- result <- find_npd_seed(first_seed = 1L, max_attempts = 1000L) -->
+<!-- result$seed -->
+<!-- ``` -->
+
+# Data Generation
+
+```{r cars}
+data <- getData(DM_phy_func = DM, q = q, alpha = alpha, beta = beta,
+                r = r, quantile = quantile, Eigen = Eigen,
+                Distribution = fam_type, p = p,
+                     Absence = TRUE, Subsample = Subsample,
+                FactorLoading = FactorLoading, NOS = NOPS)
+
+# data <- result$data
+data$yX %>%
+  dplyr::group_by(com) %>%
+  dplyr::summarise(
+    n = dplyr::n(),
+    presences = sum(y),
+    prevalence = mean(y),
+    .groups = "drop"
+  )
+
+xtabs(y ~ com + sp, data = data$yX)
+```
+
+# Modelling
+```{r}
+Model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 2,
+                      yX = data$yX, P_J = eigen(S_J)$vectors, 
+                      val_num.eig = val_num.eig, Distribution = fam_type, 
+                      null = FALSE, p = p, site = FALSE)
+```
+
+
+# Model fixing by change optimizer
+```{r}
+K_names <- paste0("p", (val_num.eig + 1):p)
+K <- diag(length(K_names))
+dimnames(K) <- list(K_names, K_names)
+
+# Try a different optimizer
+Model_optim <- update(Model$fit,
+                      family = stats::binomial(link = "logit"),
+                      data = Model$fit$frame,
+                              control=glmmTMBControl(optimizer=optim,
+                                                     optArgs=list(method="BFGS")))
+
+p1 <- Model$fit$fit$par
+p2 <- Model_optim$fit$par
+
+stopifnot(identical(names(p1), names(p2)))
+
+parameter_comparison <- data.frame(
+  component = names(p1),
+  index = ave(seq_along(p1), names(p1), FUN = seq_along),
+  nlminb = unname(p1),
+  optim = unname(p2),
+  difference = unname(p2 - p1)
+)
+
+print(parameter_comparison, row.names = FALSE)
+
+ModelComparison_optimizer<- data.frame(
+  fit = c("nlminb", "optim"),
+  objective = c(
+    Model$fit$fit$objective,
+    Model_optim$fit$objective
+  ),
+  convergence = c(
+    Model$convergence,
+    Model_optim$fit$convergence
+  ),
+  pdHess = c(
+    Model$pdHess,
+    Model_optim$sdr$pdHess
+  )
+)
+print(ModelComparison_optimizer)
+```
+
+# Model fixing by changing starting values
+```{r}
+# Try a different starting value
+start_opt <- Model_optim$obj$env$parList(
+  Model_optim$fit$par,
+  Model_optim$fit$parfull
+)
+
+start_opt <- start_opt[lengths(start_opt) > 0]
+
+fit_formula <- formula(Model_optim)
+environment(fit_formula) <- environment()  # makes the current K available
+
+Model_restart <- update(
+  Model_optim,
+  formula = fit_formula,
+  data = Model_optim$frame,
+  family = binomial(link = "logit"),
+  start = start_opt,
+  control = glmmTMBControl(
+    optimizer = optim,
+    optArgs = list(method = "BFGS")
+  )
+)
+
+p3 <- Model_optim$fit$par
+p4 <- Model_restart$fit$par
+
+stopifnot(identical(names(p3), names(p4)))
+
+parameter_comparison_restart <- data.frame(
+  component = names(p3),
+  index = ave(seq_along(p3), names(p3), FUN = seq_along),
+  BFGS = unname(p3),
+  BFGS_restart = unname(p4),
+  difference = unname(p4 - p3)
+)
+
+print(parameter_comparison_restart, row.names = FALSE)
+
+ModelComparison_restart <- data.frame(
+  fit = c("BFGS", "BFGS restart"),
+  objective = c(
+    Model_optim$fit$objective,
+    Model_restart$fit$objective
+  ),
+  convergence = c(
+    Model_optim$fit$convergence,
+    Model_restart$fit$convergence
+  ),
+  pdHess = c(
+    Model_optim$sdr$pdHess,
+    Model_restart$sdr$pdHess
+  )
+)
+
+print(ModelComparison_restart)
+
+```
+
+# Model fixing by simplifying correlation structure
+```{r}
+# Try to simplify the correlation structure (rr(sp + 0 | id, 1))
+Model_rr1 <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 1,
+                      yX = data$yX, P_J = eigen(S_J)$vectors,
+                      val_num.eig = val_num.eig, Distribution = fam_type,
+                      null = FALSE, p = p, site = FALSE)
+summary(Model_rr1$fit)
+# Try to remove the correlation structure
+Model_rr0 <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE, LV_num = 1,
+                      yX = data$yX, P_J = eigen(S_J)$vectors,
+                      val_num.eig = val_num.eig, Distribution = fam_type,
+                      null = FALSE, p = p, site = FALSE)
+summary(Model_rr0$fit)
+```

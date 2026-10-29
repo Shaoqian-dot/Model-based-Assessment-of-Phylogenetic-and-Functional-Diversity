@@ -1,5 +1,6 @@
 fit_model <- function(type, matrix_type, rr,
-                      yX, P, P_J, val_num.eig, Distribution, null, com_left, p, site = FALSE, row_effect = FALSE){
+                      yX, P, P_J, val_num.eig, Distribution, 
+                      null, com_left, p, site = FALSE, LV_num = 2){
   # Select eigenvector matrix
   P_use <- if (matrix_type == "P") P else P_J###############################################################
   
@@ -139,18 +140,10 @@ fit_model <- function(type, matrix_type, rr,
         }
      }
     if (rr) {
-      if (row_effect == TRUE){
-        base_formula <- paste(
-          base_formula,
-          "+ rr(sp + 1 | id, 2)"
-        )
-      } else {
-        base_formula <- paste(
-          base_formula,
-          "+ rr(sp + 0 | id, 2)"
-        )
-      }
-      
+      base_formula <- paste(
+        base_formula,
+        "+ rr(sp + 0 | id, ",LV_num,")"
+      )
     }
 
     form <- as.formula(base_formula)
@@ -162,17 +155,17 @@ fit_model <- function(type, matrix_type, rr,
         form,
         family = Distribution,
         data = yX_tmp,
-        REML=FALSE,
-        # control = glmmTMBControl(start_method = list(method = 'res', jitter.sd = 0.2)
-        #                          # optCtrl = list(
-        #                          #   eps = 1e-6,
-        #                          #   iter.max = 1000,
-        #                          #   eval.max = 1000
-        #                          # )
+        REML=FALSE
+        # # control = glmmTMBControl(
+        # #   #start_method = list(method = 'res', jitter.sd = 0.2),
+        # #                          optCtrl = list(
+        # #                            iter.max = 1000,
+        # #                            eval.max = 1000
+        # #                          )
         #                          )
       ),
       warning = function(w) {
-        warning_msgs <<- c(warning_msgs, conditionMessage(w))
+        warning_msgs <- c(warning_msgs, conditionMessage(w))
         #invokeRestart("muffleWarning")
       }
     )
