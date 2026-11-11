@@ -53,7 +53,7 @@ load(file.path('data', "Para_PCV.RData"))
 axis_method <- 'Method3'
 families <- c("binomial")
 globalTest <- FALSE
-test <- c("LRT") # Or LRT
+test <- c("Wald") # Or LRT
 Swap = TRUE
 p <- c(10)
 q <- 5

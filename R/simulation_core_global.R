@@ -120,14 +120,21 @@ fit_models <- function(dat,
       label = label
     )
     
+    glmm_no_rr = pchisq(
+      chi_square_no_rr,
+      df = val_num.eig,
+      lower.tail = FALSE
+    )
+    
+    glmm_rr = pchisq(
+      chi_square_rr,
+      df = val_num.eig,
+      lower.tail = FALSE
+    )
     data.frame(
       com = j,
-      glmm_no_rr = pchisq(
-        chi_square_no_rr,
-        df = val_num.eig,
-        lower.tail = FALSE
-      ),
-      glmm_no_rr_status = 'Success',
+      glmm_no_rr = glmm_no_rr,
+      glmm_no_rr_status = ifelse(is.na(glmm_no_rr), paste0('pdHess=', fit_glmm_no_rr$pdHess), 'Success'),
       glmm_no_rr_warning_msgs = fit_glmm_no_rr$warning_msgs,
       glmm_no_rr_null_warning_msgs =  NA,
       glmm_no_rr_convergence = fit_glmm_no_rr$convergence,
@@ -138,12 +145,8 @@ fit_models <- function(dat,
       glmm_no_rr_null_selected_attempt = NA,
       glmm_no_rr_needs_refit = fit_glmm_no_rr$needs_refit,
       glmm_no_rr_null_needs_refit = NA,
-      glmm_rr = pchisq(
-        chi_square_rr,
-        df = val_num.eig,
-        lower.tail = FALSE
-      ),
-      glmm_rr_status = 'Success',
+      glmm_rr = glmm_rr,
+      glmm_rr_status = ifelse(is.na(glmm_rr), paste0('pdHess=', fit_glmm_rr$pdHess), 'Success'),
       glmm_rr_warning_msgs = fit_glmm_rr$warning_msgs,
       glmm_rr_null_warning_msgs = NA, 
       glmm_rr_convergence = fit_glmm_rr$convergence,
