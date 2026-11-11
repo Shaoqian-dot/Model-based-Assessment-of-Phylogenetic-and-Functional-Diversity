@@ -86,11 +86,11 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(5)
+p <- c(10)
 
-r <- c(4, 8, 16, 32, 64)
+r <- c(8)
 
-Eigen <- c(2)
+Eigen <- c(3)
 
 
 q <- 5
@@ -175,7 +175,12 @@ res <- run_simulation(
 
 run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
                    '_axis_method_', axis_method, '_Eigen_',
-                   Eigen, '_Absence_', Absence, '_p_', p, '_muMeanOverall_MultipleSwap')
+                   Eigen, '_Absence_', Absence, '_p_', p, '_muRef_MS_res') #mu... indicates how we set abundance of ref-species.
+#muRef: use ref-speices's own abundance;
+#muMeanOverall: use average mu across the 115 species;
+#muMean: use average mu across p species.
+# MS: multiple swap
+# res: start_method = list(method = "res", jitter.sd = 0.1).
 
 out_dir <- here("output", run_name)
 

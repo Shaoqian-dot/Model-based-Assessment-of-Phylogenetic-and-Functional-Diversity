@@ -1,0 +1,362 @@
+---
+title: "Wald and LRT Tests"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+library(MASS)
+library(glmmTMB)
+library(vegan)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ape)
+library(stringr)
+source("../R/run_simulation_global.R")
+source("../R/simulation_core_global.R")
+source("../R/get_num.eig.R") # The default method is 'Method3'
+source("../R/fit_model_current2.R")
+source("../R/getData_current.R")
+source("../R/U_current.R")
+source("../R/getChisquare_fixed.R")
+source("../R/Test_LRT.R")
+source("../R/getChisquare.R")
+source("../R/getRaosQ.R")
+source("../R/RaoQ.R")
+source("../R/randomization.R")
+source("../R/rand.RaoQ.fun.R")
+source('../R/MeanAbund.R')
+source('../R/save_checkpoint.R')
+load(file.path('../data', "Para_PCV.RData"))
+
+fit_mode_Modify <- function(rr,yX, val_num.eig, Distribution, 
+                      null, com_left, p, site = FALSE, LV_num = 2,
+                      jitter.sd = 0.1, Num_refit = 20){
+  
+  yX_tmp <- yX #yX is the sata set containing y, com, sp, id, p1,...p_p
+  
+  p_vars_1 <- paste0("p", 1:val_num.eig)
+  p_vars_2 <- paste0("p", (val_num.eig + 1) : p)
+  fixed_part_1 <- paste(p_vars_1, collapse = " + ")
+  fixed_part_2 <- paste(p_vars_2, collapse = " + ")
+  
+  # ===== CASE 4: eigenvector (p_mid) model =====
+  K <- diag(p - val_num.eig)
+  colnames(K) <- paste0("p", (val_num.eig + 1) : p)
+  
+  
+    if (null) {
+      for (l in seq_along(com_left)) {
+        yX_tmp[[paste0("com", com_left[l])]] <- as.numeric(yX_tmp$com == com_left[l]) #Create community indicators
+      }
+      
+      interaction_terms <- if(length(com_left) == 0){
+        NULL
+      } else {
+        paste0("com", com_left, ":(", fixed_part_1, ")")
+      }
+      
+      rhs_terms <- c(
+        paste0("(", fixed_part_1, ")"),
+        interaction_terms,
+        paste0("propto(0 + ", fixed_part_2, " | com, K)")
+      )
+      
+      base_formula <- paste(
+        "y ~",
+        paste(rhs_terms, collapse = " + ")
+      )
+      
+      } else {
+        if (site == TRUE) {
+          base_formula <- paste(
+            "y ~ (", fixed_part_1, ") + (1|site) + com : (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
+          )
+        } else {
+          base_formula <- paste(
+            "y ~ (", fixed_part_1, ") + com : (", fixed_part_1, ") + propto(0 + ", fixed_part_2, " | com, K)"
+          )
+        }
+     }
+    if (rr) {
+      base_formula <- paste(
+        base_formula,
+        "+ rr(sp + 0 | id, ",LV_num,")"
+      )
+      form <- as.formula(base_formula)
+      
+      fit_once <- function(optCtrl = NULL) {
+        msgs <- character()
+        
+        fit <- withCallingHandlers(
+          glmmTMB(
+            form,
+            family = Distribution,
+            data = yX_tmp,
+            REML = FALSE,
+            control = glmmTMBControl(
+              start_method = list(method = "res", jitter.sd = jitter.sd),
+              optCtrl = optCtrl
+            )
+          ),
+          warning = function(w) {
+            msgs <<- c(msgs, conditionMessage(w))
+          }
+        )
+        
+        list(fit = fit, warnings = unique(msgs))
+      }
+    } else {
+      form <- as.formula(base_formula)
+      
+      fit_once <- function(optCtrl = NULL) {
+        msgs <- character()
+        
+        fit <- withCallingHandlers(
+          glmmTMB(
+            form,
+            family = Distribution,
+            data = yX_tmp,
+            REML = FALSE,
+            control = glmmTMBControl(
+              optCtrl = optCtrl
+            )
+          ),
+          warning = function(w) {
+            msgs <<- c(msgs, conditionMessage(w))
+          }
+        )
+        
+        list(fit = fit, warnings = unique(msgs))
+      }
+    }
+
+    fit_with_limit_retry <- function(attempt_seed) {
+      set.seed(attempt_seed)
+      result <- fit_once()
+      
+      limit_warning <- any(grepl(
+        "iteration limit reached without convergence|function evaluation limit reached without convergence",
+        result$warnings,
+        ignore.case = TRUE
+      ))
+      
+      if (limit_warning) {
+        # Reuse the same randomized start; change only the optimizer limits.
+        set.seed(attempt_seed)
+        result <- tryCatch(
+          fit_once(list(iter.max = 1000, eval.max = 1000)),
+          error = function(e) {
+            message("Higher-limit retry failed: ", conditionMessage(e))
+            result
+          }
+        )
+      }
+      
+      result
+    }
+    
+    acceptable <- function(result) {
+      isTRUE(result$fit$fit$convergence == 0L) &&
+        isTRUE(result$fit$sdr$pdHess) &&
+        isTRUE(is.finite(result$fit$fit$objective))
+    }
+    
+    # Distinct seeds give the initial fit and each refit different randomized starts.
+    attempt_seeds <- sample.int(.Machine$integer.max, (Num_refit + 1))
+    
+    selected <- fit_with_limit_retry(attempt_seeds[1L])
+    selected_attempt <- 0L  # 0 means the initial fit
+    n_accepted_refits <- 0L
+    
+    needs_refit <- !acceptable(selected)
+    if (needs_refit) {
+      best_refit <- NULL
+      
+      fits <- vector("list", (Num_refit + 1))
+      fits[[1]] <- selected
+      for (i in seq_len(Num_refit)) {
+        candidate <- tryCatch(
+          fit_with_limit_retry(attempt_seeds[i + 1L]),
+          error = function(e) {
+            message("Refit ", i, " failed: ", conditionMessage(e))
+            NULL
+          }
+        )
+        
+        fits[[i + 1]] <- candidate
+        
+        if (is.null(candidate) || !acceptable(candidate)) next
+        
+        n_accepted_refits <- n_accepted_refits + 1L
+        
+        if (is.null(best_refit) ||
+            candidate$fit$fit$objective < best_refit$fit$fit$objective) {
+          best_refit <- candidate
+          selected_attempt <- i
+        }
+        }
+      
+      # Replace selected with best_refit.
+      if (!is.null(best_refit)) selected <- best_refit
+      assign("fits", fits, envir = .GlobalEnv)
+    }
+    
+    
+    fit <- selected$fit #Note that if none of the 20 refits is acceptable, retain the initial fit.
+    warning_msgs <- if (length(selected$warnings)) {
+      paste(selected$warnings, collapse = " | ")
+    } else {
+      "None"
+    }
+    
+    return(list(
+      fit = fit,
+      warning_msgs = warning_msgs,
+      convergence = fit$fit$convergence,
+      pdHess = fit$sdr$pdHess,
+      selected_attempt = selected_attempt, # the time of refit, which is as the best model
+      needs_refit = needs_refit # A logical variable to indicate if we need refit or not.
+    ))
+  
+}
+
+summarise_fits <- function(fits) {
+  do.call(rbind, lapply(seq_along(fits), function(i) {
+    x <- fits[[i]]
+
+    if (is.null(x) || is.null(x$fit)) {
+      return(data.frame(
+        refit = i,
+        objective = NA_real_,
+        convergence = NA_integer_,
+        pdHess = NA,
+        msgs = "Fit failed"
+      ))
+    }
+
+    data.frame(
+      refit = i,
+      objective = x$fit$fit$objective,
+      convergence = x$fit$fit$convergence,
+      pdHess = x$fit$sdr$pdHess,
+      msgs = if (length(x$warnings)) {
+        paste(x$warnings, collapse = " | ")
+      } else {
+        "None"
+      }
+    )
+  }))
+}
+```
+
+# Parameter Setting.
+```{r cars}
+axis_method <- 'Method3'
+families <- c("binomial")
+globalTest <- FALSE
+test <- c("Both") # Or LRT
+Swap = TRUE
+p <- c(10)
+q <- 5
+r <- c(8)
+alpha <- log(9/4)
+beta <- log(2)
+quantile <- 0.35
+Eigen <- 3
+NOS <- 2
+nsim = 1 # The number of simulations
+
+seed <- data.frame(
+  seed = seq(
+    from = 1000,
+    by = 1,
+    length.out = nsim
+  ))
+```
+
+# Wald Test and LRT
+```{r}
+res_all <- seed |>
+  pmap_dfr(function(seed){
+    run_simulation(
+      family_type = families,
+      globalTest = globalTest,
+      test = test,
+      Swap = Swap,
+      p = p,
+      q = q,
+      r = r,
+      seed = seed,
+      tree = tree,
+      alpha = alpha,
+      beta = beta,
+      quantile = quantile,
+      Eigen = Eigen,
+      axis_method = axis_method ,
+      Absence = TRUE,
+      FactorLoading = Lambda,
+      TruePara = TruePara
+    )
+  })
+print(res_all)
+```
+
+# Look at glmm_rr
+```{r}
+yX <- fits[[1]]$fit$frame
+glmm_rr_0.1 <- fits[[1]]$fit
+results_fits <- summarise_fits(fits)
+results_fits <- results_fits[
+  order(results_fits$objective, na.last = TRUE),
+]
+rownames(results_fits) <- NULL
+
+print(results_fits)
+```
+# Look at glmm_rr_null
+```{r}
+glmm_rr_null_0.1 <- fit_mode_Modify(rr = TRUE,yX = yX, val_num.eig = 3, Distribution = 'binomial', 
+                      null = TRUE, com_left = c(2, 3, 5), p = p, site = FALSE, LV_num = 2,
+                      jitter.sd = 0.1, Num_refit = 20)
+results_fits <- summarise_fits(fits)
+results_fits <- results_fits[
+  order(results_fits$objective, na.last = TRUE),
+]
+rownames(results_fits) <- NULL
+
+print(results_fits)
+```
+## Change to jitter.sd = 0.2
+```{r}
+glmm_rr_0.2 <- fit_mode_Modify(rr = TRUE,yX = yX, val_num.eig = 3, Distribution = 'binomial', 
+                      null = TRUE, com_left = c(2, 3, 5), p = p, site = FALSE, LV_num = 2,
+                      jitter.sd = 0.2, Num_refit = 20)
+results_fits <- summarise_fits(fits)
+
+results_fits <- results_fits[
+  order(results_fits$objective, na.last = TRUE),
+]
+rownames(results_fits) <- NULL
+
+print(results_fits)
+```
+## Change to Num_refit = 40
+```{r}
+glmm_rr_40 <- fit_mode_Modify(rr = TRUE,yX = yX, val_num.eig = 3, Distribution = 'binomial', 
+                      null = TRUE, com_left = c(2, 3, 5),  p = p, site = FALSE, LV_num = 2,
+                      jitter.sd = 0.1, Num_refit = 40)
+results_fits <- summarise_fits(fits)
+
+results_fits <- results_fits[
+  order(results_fits$objective, na.last = TRUE),
+]
+rownames(results_fits) <- NULL
+
+print(results_fits)
+```

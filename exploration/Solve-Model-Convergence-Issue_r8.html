@@ -11,9 +11,9 @@
 
 <meta name="author" content="Shaoqian Huang" />
 
-<meta name="date" content="2026-10-28" />
+<meta name="date" content="2026-11-04" />
 
-<title>Solve Model Convergence Issue_Large Sample Size</title>
+<title>Solve Model Convergence Issue_r8</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,54 +350,51 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">Solve Model Convergence Issue_Large Sample
-Size</h1>
+<h1 class="title toc-ignore">Solve Model Convergence Issue_r8</h1>
 <h4 class="author">Shaoqian Huang</h4>
-<h4 class="date">2026-10-28</h4>
+<h4 class="date">2026-11-04</h4>
 
 </div>
 
 
 <div id="parameters" class="section level1">
-<h1>Parameters</h1>
+<h1>1 Parameters</h1>
 <pre class="r"><code>set.seed(1)
 p &lt;- 10
-NOPS &lt;- 2# Number of pair of swaps 
+NOPS &lt;- 2# Number of pairs of swaps 
 r &lt;- 8
 q &lt;- 5
 alpha &lt;- log(9 / 4)
 beta &lt;- log(4)
+quantile &lt;- 0.35
+Eigen &lt;- 3 # Build correlation by extracting factor loading from the real data set
+fam_type &lt;- &#39;binomial&#39;
+Absence &lt;- &#39;TRUE&#39;
+FactorLoading &lt;- Lambda
 
+# Subsample from the original pool containing 115 species
 Subsample &lt;- sample(TruePara, p)
+
+# Build up the subtree and calculate its distance matrix
 subtree &lt;- keep.tip(tree, names(Subsample))
 DM &lt;- cophenetic.phylo(subtree)
 S &lt;- max(DM) - DM
 J &lt;- diag(1, p) - (1/p) * matrix(1, p, p)
 S_J &lt;- J %*% S %*% J
 
-quantile &lt;- 0.35
-Eigen &lt;- 3
-fam_type &lt;- &#39;binomial&#39;
-Absence &lt;- &#39;TRUE&#39;
-FactorLoading &lt;- Lambda
+# The number of main axes important in signalling diversity changes
 val_num.eig &lt;- get_num.eig(Methods = &#39;Method3&#39;, 
                            Methods_para = NA,
                            D = diag(eigen(S_J)$values)[-p, -p])</code></pre>
-<!-- # Data set searching for modelling warning -->
-<!-- ```{r} -->
-<!-- result <- find_npd_seed(first_seed = 1L, max_attempts = 1000L) -->
-<!-- result$seed -->
-<!-- ``` -->
 </div>
 <div id="data-generation" class="section level1">
-<h1>Data Generation</h1>
+<h1>2 Data Generation</h1>
 <pre class="r"><code>data &lt;- getData(DM_phy_func = DM, q = q, alpha = alpha, beta = beta,
                 r = r, quantile = quantile, Eigen = Eigen,
                 Distribution = fam_type, p = p,
                      Absence = TRUE, Subsample = Subsample,
                 FactorLoading = FactorLoading, NOS = NOPS)
 
-# data &lt;- result$data
 data$yX %&gt;%
   dplyr::group_by(com) %&gt;%
   dplyr::summarise(
@@ -424,33 +421,38 @@ data$yX %&gt;%
 ##   5 3 0 1 1 1 0 0 0 0  0</code></pre>
 </div>
 <div id="modelling" class="section level1">
-<h1>Modelling</h1>
+<h1>3 Modelling</h1>
 <pre class="r"><code>Model &lt;- fit_model(type = &#39;p_mid&#39;, matrix_type = &#39;P_J&#39;, rr = TRUE, LV_num = 2,
                       yX = data$yX, P_J = eigen(S_J)$vectors, 
                       val_num.eig = val_num.eig, Distribution = fam_type, 
                       null = FALSE, p = p, site = FALSE)</code></pre>
-<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence problem;
-## non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
-<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence problem; false
-## convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; false convergence (8). See vignette(&#39;troubleshooting&#39;),
+## help(&#39;diagnose&#39;)</code></pre>
 </div>
-<div id="model-fixing-by-change-optimizer" class="section level1">
-<h1>Model fixing by change optimizer</h1>
+<div id="model-fixing" class="section level1">
+<h1>4 Model fixing</h1>
+<div id="by-changing-a-different-optimizer-the-first-try" class="section level2">
+<h2>4.1 by changing a different optimizer (the first try)</h2>
 <pre class="r"><code>K_names &lt;- paste0(&quot;p&quot;, (val_num.eig + 1):p)
 K &lt;- diag(length(K_names))
 dimnames(K) &lt;- list(K_names, K_names)
 
-# Try a different optimizer
+# Try optimizer optim
 Model_optim &lt;- update(Model$fit,
                       family = stats::binomial(link = &quot;logit&quot;),
                       data = Model$fit$frame,
                               control=glmmTMBControl(optimizer=optim,
                                                      optArgs=list(method=&quot;BFGS&quot;)))</code></pre>
-<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence problem;
-## non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
-<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence problem; . See
-## vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)</code></pre>
-<pre class="r"><code>p1 &lt;- Model$fit$fit$par
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; . See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)</code></pre>
+<pre class="r"><code># Comparison
+## Compare parameters
+p1 &lt;- Model$fit$fit$par
 p2 &lt;- Model_optim$fit$par
 
 stopifnot(identical(names(p1), names(p2)))
@@ -463,51 +465,20 @@ parameter_comparison &lt;- data.frame(
   difference = unname(p2 - p1)
 )
 
-print(parameter_comparison, row.names = FALSE)</code></pre>
-<pre><code>##  component index      nlminb       optim  difference
-##       beta     1  -59.426519 -41.3357255  18.0907934
-##       beta     2  -94.799672 -24.6874074  70.1122642
-##       beta     3   -3.291274  -0.5044884   2.7867858
-##       beta     4  101.422624  39.0557442 -62.3668802
-##       beta     5  -49.559611 -15.0784451  34.4811658
-##       beta     6  103.837232  31.2436780 -72.5935539
-##       beta     7  -78.652251 -41.0823045  37.5699461
-##       beta     8  -16.788671  22.4664121  39.2550834
-##       beta     9  -69.390240 -32.5292882  36.8609517
-##       beta    10  124.956480  37.3450739 -87.6114064
-##       beta    11  -61.992043 -15.4681508  46.5238921
-##      theta     1    8.596731   7.8469179  -0.7498128
-##      theta     2  150.466982  87.2457023 -63.2212801
-##      theta     3  145.137213  66.4540026 -78.6832107
-##      theta     4   53.031518  28.0590223 -24.9724960
-##      theta     5    1.760197 -41.0584195 -42.8186167
-##      theta     6 -245.929752 -79.3160769 166.6136752
-##      theta     7  -63.059026 -27.6886689  35.3703570
-##      theta     8  -27.257679   3.8148523  31.0725310
-##      theta     9  -27.257676   3.8148523  31.0725284
-##      theta    10 -145.218250 -74.1072262  71.1110242
-##      theta    11  150.390829  50.9061068 -99.4847218
-##      theta    12  -52.745592   8.1530734  60.8986657
-##      theta    13 -105.151600 -97.8786119   7.2729881
-##      theta    14   -5.449120   1.6447438   7.0938634
-##      theta    15  171.007744  73.1291179 -97.8786261
-##      theta    16   -2.838134   3.1559472   5.9940814
-##      theta    17   -2.838129   3.1559472   5.9940762
-##      theta    18  155.707373  87.5142728 -68.1931006
-##      theta    19    2.005644   4.4658664   2.4602224
-##      theta    20 -109.031976  47.9418049 156.9737805</code></pre>
-<pre class="r"><code>ModelComparison_optimizer&lt;- data.frame(
+
+## Compare model convergence
+ModelComparison_optimizer&lt;- data.frame(
   fit = c(&quot;nlminb&quot;, &quot;optim&quot;),
   objective = c(
     Model$fit$fit$objective,
     Model_optim$fit$objective
   ),
   convergence = c(
-    Model$fit$convergence,
+    Model$convergence,
     Model_optim$fit$convergence
   ),
   pdHess = c(
-    Model$sdr$pdHess,
+    Model$pdHess,
     Model_optim$sdr$pdHess
   )
 )
@@ -515,9 +486,84 @@ print(ModelComparison_optimizer)</code></pre>
 <pre><code>##      fit objective convergence pdHess
 ## 1 nlminb  40.45586           1  FALSE
 ## 2  optim  42.43650           1  FALSE</code></pre>
+<div id="check-what-is-the-conveyed-starting-values-to-model_optim" class="section level3">
+<h3>4.1.1 Check what is the conveyed starting values to Model_optim</h3>
+<pre class="r"><code>start &lt;- Model_optim$obj$par
+final &lt;- Model_optim$fit$par
+
+data.frame(
+  component = names(start),
+  start = unname(start),
+  final = unname(final)
+)</code></pre>
+<pre><code>##    component start       final
+## 1       beta     0 -41.3357255
+## 2       beta     0 -24.6874074
+## 3       beta     0  -0.5044884
+## 4       beta     0  39.0557442
+## 5       beta     0 -15.0784451
+## 6       beta     0  31.2436780
+## 7       beta     0 -41.0823045
+## 8       beta     0  22.4664121
+## 9       beta     0 -32.5292882
+## 10      beta     0  37.3450739
+## 11      beta     0 -15.4681508
+## 12     theta     0   7.8469179
+## 13     theta     1  87.2457023
+## 14     theta     1  66.4540026
+## 15     theta     1  28.0590223
+## 16     theta     1 -41.0584195
+## 17     theta     1 -79.3160769
+## 18     theta     1 -27.6886689
+## 19     theta     1   3.8148523
+## 20     theta     1   3.8148523
+## 21     theta     1 -74.1072262
+## 22     theta     1  50.9061068
+## 23     theta     1   8.1530734
+## 24     theta     1 -97.8786119
+## 25     theta     1   1.6447438
+## 26     theta     1  73.1291179
+## 27     theta     1   3.1559472
+## 28     theta     1   3.1559472
+## 29     theta     1  87.5142728
+## 30     theta     1   4.4658664
+## 31     theta     1  47.9418049</code></pre>
+<pre class="r"><code>print(all.equal(Model$fit$obj$par, Model_optim$obj$par))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>print(Model$fit$obj$par)</code></pre>
+<pre><code>##  beta  beta  beta  beta  beta  beta  beta  beta  beta  beta  beta theta theta 
+##     0     0     0     0     0     0     0     0     0     0     0     0     1 
+## theta theta theta theta theta theta theta theta theta theta theta theta theta 
+##     1     1     1     1     1     1     1     1     1     1     1     1     1 
+## theta theta theta theta theta 
+##     1     1     1     1     1</code></pre>
+<pre class="r"><code>#print(Model_optim$obj$par)
+
+print(all.equal(Model_optim$obj$env$parameters$b, 
+          Model$fit$obj$env$parameters$b))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>#print(Model_optim$obj$env$parameters$b)
+print(Model$fit$obj$env$parameters$b)</code></pre>
+<pre><code>##   [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+##  [38] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+##  [75] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [112] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [149] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [186] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [223] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [260] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [297] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [334] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [371] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+## [408] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0</code></pre>
+<p>The outputs say that the starting values conveyed into Model_optim
+aren’t changed even though we get Model_optim from updating
+Model$fit.</p>
 </div>
-<div id="model-fixing-by-changing-starting-values" class="section level1">
-<h1>Model fixing by changing starting values</h1>
+</div>
+<div id="model-fixing-by-changing-starting-values-as-model_optims-estimates-the-first-try" class="section level2">
+<h2>4.2 Model fixing by changing starting values as Model_optim’s
+estimates (the first try)</h2>
 <pre class="r"><code># Try a different starting value
 start_opt &lt;- Model_optim$obj$env$parList(
   Model_optim$fit$par,
@@ -534,63 +580,29 @@ Model_restart &lt;- update(
   formula = fit_formula,
   data = Model_optim$frame,
   family = binomial(link = &quot;logit&quot;),
-  start = start_opt,
-  control = glmmTMBControl(
-    optimizer = optim,
-    optArgs = list(method = &quot;BFGS&quot;)
-  )
+  start = start_opt
 )</code></pre>
-<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence problem;
-## non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
-<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence problem; . See
-## vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; . See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)</code></pre>
 <pre class="r"><code>p3 &lt;- Model_optim$fit$par
 p4 &lt;- Model_restart$fit$par
 
 stopifnot(identical(names(p3), names(p4)))
 
+# Comparison
+## Compare parameters
 parameter_comparison_restart &lt;- data.frame(
   component = names(p3),
   index = ave(seq_along(p3), names(p3), FUN = seq_along),
+  optim = unname(p1),
   BFGS = unname(p3),
-  BFGS_restart = unname(p4),
-  difference = unname(p4 - p3)
+  BFGS_restart = unname(p4)
 )
 
-print(parameter_comparison_restart, row.names = FALSE)</code></pre>
-<pre><code>##  component index        BFGS BFGS_restart   difference
-##       beta     1 -41.3357255   -40.602416   0.73330907
-##       beta     2 -24.6874074   -42.213028 -17.52562106
-##       beta     3  -0.5044884     4.365461   4.86994929
-##       beta     4  39.0557442    60.264966  21.20922162
-##       beta     5 -15.0784451   -28.286795 -13.20834977
-##       beta     6  31.2436780    34.808639   3.56496111
-##       beta     7 -41.0823045   -47.036566  -5.95426133
-##       beta     8  22.4664121    13.845208  -8.62120426
-##       beta     9 -32.5292882   -50.621504 -18.09221538
-##       beta    10  37.3450739    47.660101  10.31502714
-##       beta    11 -15.4681508   -42.515675 -27.04752448
-##      theta     1   7.8469179     7.458568  -0.38835002
-##      theta     2  87.2457023    80.889663  -6.35603960
-##      theta     3  66.4540026    75.849104   9.39510135
-##      theta     4  28.0590223    21.112917  -6.94610545
-##      theta     5 -41.0584195   -10.895133  30.16328682
-##      theta     6 -79.3160769   -63.861271  15.45480564
-##      theta     7 -27.6886689   -32.245317  -4.55664819
-##      theta     8   3.8148523     2.968931  -0.84592151
-##      theta     9   3.8148523     2.968931  -0.84592162
-##      theta    10 -74.1072262  -104.365675 -30.25844871
-##      theta    11  50.9061068    38.796534 -12.10957291
-##      theta    12   8.1530734     8.940743   0.78766915
-##      theta    13 -97.8786119  -105.804473  -7.92586118
-##      theta    14   1.6447438   -10.612014 -12.25675737
-##      theta    15  73.1291179    71.255646  -1.87347217
-##      theta    16   3.1559472    -4.228045  -7.38399181
-##      theta    17   3.1559472    -4.228046  -7.38399326
-##      theta    18  87.5142728    87.443943  -0.07032973
-##      theta    19   4.4658664    40.423557  35.95769060
-##      theta    20  47.9418049    63.433722  15.49191666</code></pre>
-<pre class="r"><code>ModelComparison_restart &lt;- data.frame(
+## Compare model convergence
+ModelComparison_restart &lt;- data.frame(
   fit = c(&quot;BFGS&quot;, &quot;BFGS restart&quot;),
   objective = c(
     Model_optim$fit$objective,
@@ -611,104 +623,288 @@ print(ModelComparison_restart)</code></pre>
 ## 1         BFGS  42.43650           1  FALSE
 ## 2 BFGS restart  40.01908           1  FALSE</code></pre>
 </div>
-<div id="model-fixing-by-simplifying-correlation-structure" class="section level1">
-<h1>Model fixing by simplifying correlation structure</h1>
-<pre class="r"><code># Try to simplify the correlation structure (rr(sp + 0 | id, 1))
-Model_rr1 &lt;- fit_model(type = &#39;p_mid&#39;, matrix_type = &#39;P_J&#39;, rr = TRUE, LV_num = 1,
-                      yX = data$yX, P_J = eigen(S_J)$vectors,
-                      val_num.eig = val_num.eig, Distribution = fam_type,
-                      null = FALSE, p = p, site = FALSE)
-summary(Model_rr1$fit)</code></pre>
-<pre><code>##  Family: binomial  ( logit )
-## Formula:          y ~ (p1 + p2) + com:(p1 + p2) + propto(0 + p3 + p4 + p5 + p6 +  
-##     p7 + p8 + p9 + p10 | com, K) + rr(sp + 0 | id, 1)
-## Data: yX_tmp
-## 
-##       AIC       BIC    logLik -2*log(L)  df.resid 
-##     172.6     260.4     -64.3     128.6       378 
-## 
-## Random effects:
-## 
-## Conditional model:
-##  Groups Name Variance  Std.Dev.  Corr                                                  
-##  com    p3   2.824e+00  1.680612                                                       
-##         p4   2.824e+00  1.680612 0.00                                                  
-##         p5   2.824e+00  1.680612 0.00  0.00                                            
-##         p6   2.824e+00  1.680612 0.00  0.00  0.00                                      
-##         p7   2.824e+00  1.680612 0.00  0.00  0.00  0.00                                
-##         p8   2.824e+00  1.680612 0.00  0.00  0.00  0.00  0.00                          
-##         p9   2.824e+00  1.680612 0.00  0.00  0.00  0.00  0.00  0.00                    
-##         p10  2.824e+00  1.680612 0.00  0.00  0.00  0.00  0.00  0.00  0.00              
-##  id     sp1  5.397e+02 23.231407                                                       
-##         sp2  8.239e-05  0.009077 -1.00                                                 
-##         sp3  3.849e-03  0.062042 -1.00  1.00                                           
-##         sp4  5.850e+01  7.648301 -1.00  1.00  1.00                                     
-##         sp5  2.053e+02 14.329719 -1.00  1.00  1.00  1.00                               
-##         sp6  3.626e+00  1.904189  1.00 -1.00 -1.00 -1.00 -1.00                         
-##         sp7  3.626e+00  1.904188  1.00 -1.00 -1.00 -1.00 -1.00  1.00                   
-##         sp8  5.255e+02 22.924207 -1.00  1.00  1.00  1.00  1.00 -1.00 -1.00             
-##         sp9  1.059e-02  0.102905  1.00 -1.00 -1.00 -1.00 -1.00  1.00  1.00 -1.00       
-##         sp10 2.115e-01  0.459929 -1.00  1.00  1.00  1.00  1.00 -1.00 -1.00  1.00 -1.00 
-## Number of obs: 400, groups:  com, 5; id, 40
-## 
-## Conditional model:
-##             Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)  -15.651      4.559  -3.433 0.000597 ***
-## p1           -19.636     22.552  -0.871 0.383905    
-## p2            19.835     17.940   1.106 0.268885    
-## p1:com2       27.794     24.384   1.140 0.254342    
-## p1:com3      -19.122     16.508  -1.158 0.246705    
-## p1:com4       22.190     23.137   0.959 0.337513    
-## p1:com5      -14.404     18.179  -0.792 0.428156    
-## p2:com2       12.891     27.955   0.461 0.644706    
-## p2:com3      -25.348     19.228  -1.318 0.187407    
-## p2:com4       25.688     24.904   1.031 0.302318    
-## p2:com5      -15.330     20.168  -0.760 0.447173    
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
-<pre class="r"><code># Try to remove the correlation structure
-Model_rr0 &lt;- fit_model(type = &#39;p_mid&#39;, matrix_type = &#39;P_J&#39;, rr = FALSE, LV_num = 1,
-                      yX = data$yX, P_J = eigen(S_J)$vectors,
-                      val_num.eig = val_num.eig, Distribution = fam_type,
-                      null = FALSE, p = p, site = FALSE)
-summary(Model_rr0$fit)</code></pre>
-<pre><code>##  Family: binomial  ( logit )
-## Formula:          y ~ (p1 + p2) + com:(p1 + p2) + propto(0 + p3 + p4 + p5 + p6 +  
-##     p7 + p8 + p9 + p10 | com, K)
-## Data: yX_tmp
-## 
-##       AIC       BIC    logLik -2*log(L)  df.resid 
-##     196.0     243.9     -86.0     172.0       388 
-## 
-## Random effects:
-## 
-## Conditional model:
-##  Groups Name Variance Std.Dev. Corr                               
-##  com    p3   0.8814   0.9388                                      
-##         p4   0.8814   0.9388   0.00                               
-##         p5   0.8814   0.9388   0.00 0.00                          
-##         p6   0.8814   0.9388   0.00 0.00 0.00                     
-##         p7   0.8814   0.9388   0.00 0.00 0.00 0.00                
-##         p8   0.8814   0.9388   0.00 0.00 0.00 0.00 0.00           
-##         p9   0.8814   0.9388   0.00 0.00 0.00 0.00 0.00 0.00      
-##         p10  0.8814   0.9388   0.00 0.00 0.00 0.00 0.00 0.00 0.00 
-## Number of obs: 400, groups:  com, 5
-## 
-## Conditional model:
-##             Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)  -3.4300     0.4427  -7.748  9.3e-15 ***
-## p1           -4.0173     2.7750  -1.448    0.148    
-## p2            0.6984     2.2721   0.307    0.759    
-## p1:com2       4.9341     3.2623   1.512    0.130    
-## p1:com3       0.8388     3.5929   0.233    0.815    
-## p1:com4       3.4032     3.1177   1.092    0.275    
-## p1:com5      -0.9662     3.6637  -0.264    0.792    
-## p2:com2       0.5178     3.2180   0.161    0.872    
-## p2:com3      -1.0641     2.9952  -0.355    0.722    
-## p2:com4       3.5495     3.3130   1.071    0.284    
-## p2:com5      -0.2384     3.1953  -0.075    0.941    
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<div id="by-using-reduced-rank-starting-value-settings-the-second-try" class="section level2">
+<h2>4.3 By using reduced-rank starting-value settings (the second
+try)</h2>
+<pre class="r"><code>seeds &lt;- 101:120
+
+runs &lt;- lapply(seeds, function(seed) {
+  warnings &lt;- character()
+
+  fit &lt;- tryCatch(
+    withCallingHandlers(
+      refit(seed),
+      warning = function(w) {
+        warnings &lt;&lt;- c(warnings, conditionMessage(w))
+        tryInvokeRestart(&quot;muffleWarning&quot;)
+      }
+    ),
+    error = function(e) e
+  )
+
+  failed &lt;- inherits(fit, &quot;error&quot;)
+
+  list(
+    fit = if (failed) NULL else fit,
+    warnings = warnings,
+    error = if (failed) conditionMessage(fit) else NA_character_
+  )
+})
+
+fits &lt;- lapply(runs, `[[`, &quot;fit&quot;)
+
+results &lt;- data.frame(
+  seed = seeds,
+  objective = vapply(fits, function(m)
+    if (is.null(m)) NA_real_ else m$fit$objective, numeric(1)),
+  convergence = vapply(fits, function(m)
+    if (is.null(m)) NA_integer_ else as.integer(m$fit$convergence), integer(1)),
+  pdHess = vapply(fits, function(m)
+    if (is.null(m)) NA else m$sdr$pdHess, logical(1)),
+  warnings = vapply(runs, function(x)
+    if (length(x$warnings)) paste(x$warnings, collapse = &quot; | &quot;)
+    else NA_character_, character(1)),
+  error = vapply(runs, function(x) x$error, character(1))
+)
+
+print(results)</code></pre>
+<pre><code>##    seed objective convergence pdHess
+## 1   101  37.33896           0   TRUE
+## 2   102  37.33902           0   TRUE
+## 3   103  45.12038           0   TRUE
+## 4   104  52.22815           0  FALSE
+## 5   105  39.64371           1  FALSE
+## 6   106  38.98758           0  FALSE
+## 7   107  37.33897           0   TRUE
+## 8   108  39.64073           1  FALSE
+## 9   109  52.34931           0   TRUE
+## 10  110  42.05767           1  FALSE
+## 11  111  37.33898           0   TRUE
+## 12  112  39.19719           1  FALSE
+## 13  113  42.40193           0   TRUE
+## 14  114  38.21616           1  FALSE
+## 15  115  39.72168           1  FALSE
+## 16  116  42.10597           1  FALSE
+## 17  117  39.57077           1  FALSE
+## 18  118  52.24829           0   TRUE
+## 19  119  52.22815           0  FALSE
+## 20  120  39.55726           1  FALSE
+##                                                                                                                                                                                                  warnings
+## 1                                                                                                                                                                                                    &lt;NA&gt;
+## 2                                                                                                                                                                                                    &lt;NA&gt;
+## 3                                                                                                                                                                                                    &lt;NA&gt;
+## 4                                                                                                        Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)
+## 5  Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 6                                                                                                        Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)
+## 7                                                                                                                                                                                                    &lt;NA&gt;
+## 8  Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 9                                                                                                                                                                                                    &lt;NA&gt;
+## 10 Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 11                                                                                                                                                                                                   &lt;NA&gt;
+## 12 Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 13                                                                                                                                                                                                   &lt;NA&gt;
+## 14 Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 15 Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 16 Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 17 Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+## 18                                                                                                                                                                                                   &lt;NA&gt;
+## 19                                                                                                       Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)
+## 20 Model convergence problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;) | Model convergence problem; false convergence (8). See vignette(&#39;troubleshooting&#39;), help(&#39;diagnose&#39;)
+##    error
+## 1   &lt;NA&gt;
+## 2   &lt;NA&gt;
+## 3   &lt;NA&gt;
+## 4   &lt;NA&gt;
+## 5   &lt;NA&gt;
+## 6   &lt;NA&gt;
+## 7   &lt;NA&gt;
+## 8   &lt;NA&gt;
+## 9   &lt;NA&gt;
+## 10  &lt;NA&gt;
+## 11  &lt;NA&gt;
+## 12  &lt;NA&gt;
+## 13  &lt;NA&gt;
+## 14  &lt;NA&gt;
+## 15  &lt;NA&gt;
+## 16  &lt;NA&gt;
+## 17  &lt;NA&gt;
+## 18  &lt;NA&gt;
+## 19  &lt;NA&gt;
+## 20  &lt;NA&gt;</code></pre>
+<div id="model-diagnosis" class="section level3">
+<h3>4.3.1 Model Diagnosis</h3>
+<pre class="r"><code>Model_res_101 &lt;- fits[[1]]
+
+# Model diagnosis
+# res&lt;- simulateResiduals(
+#   fittedModel = Model_res_101,   #Your glmmTMB object
+#   n = 1000              # Normally in 500–1000
+# )
+
+## Residual plot: dunn-smyth vs predicted values
+fitted_values &lt;- fitted(Model_res_101)
+dunn_smyth_residuals &lt;- residuals(Model_res_101, type = &quot;dunn-smyth&quot;)
+
+plot(
+  fitted_values,
+  dunn_smyth_residuals,
+  pch = 16,
+  col = adjustcolor(&quot;black&quot;, alpha.f = 0.35),
+  xlab = &quot;Fitted values&quot;,
+  ylab = &quot; Dunn-Smyth residuals&quot;
+)
+
+abline(h = 0, col = &quot;red&quot;, lty = 2, lwd = 2)
+
+lines(
+  lowess(fitted_values, dunn_smyth_residuals),
+  col = &quot;blue&quot;,
+  lwd = 2
+)</code></pre>
+<p><img role="img" src="data:image/png;base64,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" width="672" /></p>
+</div>
+<div id="investigate-starting-values-of-the-best-models" class="section level3">
+<h3>4.3.2 Investigate starting values of the best models</h3>
+<pre class="r"><code>best &lt;- fits[match(c(101, 102, 107, 111), seeds)]
+
+# Comparison of starting values
+## Extract starting values
+Model_res_101 &lt;- fits[[1]]
+Model_res_102 &lt;- fits[[2]]
+Model_res_107 &lt;- fits[[7]]
+Model_res_111 &lt;- fits[[11]]
+Model_res_104 &lt;- fits[[4]] #A bad model
+
+Start &lt;- data.frame(
+ Parameters = c(names(Model_res_101$obj$par),
+                paste0(&#39;b&#39;, 1 : length(Model_res_104$obj$env$parameters$b))),
+  Start101 = c(Model_res_101$obj$par, Model_res_101$obj$env$parameters$b),
+  Start102 = c(Model_res_102$obj$par, Model_res_102$obj$env$parameters$b),
+  Start107 = c(Model_res_107$obj$par, Model_res_107$obj$env$parameters$b),
+  Start111 = c(Model_res_111$obj$par, Model_res_111$obj$env$parameters$b),
+  Start104 = c(Model_res_104$obj$par, Model_res_104$obj$env$parameters$b)
+)
+
+# Refit a model with part of the starting values changed
+m &lt;- Model_res_101
+# Extract Model_res_101&#39;s starting values
+start_101 &lt;- m$obj$env$parList(
+  x   = m$obj$par,
+  par = unlist(m$obj$env$parameters)
+)
+
+start_101 &lt;- start_101[lengths(start_101) &gt; 0]
+
+# Modify beta, theta, and b
+start_101_beta &lt;-  start_101
+start_101_theta &lt;- start_101
+start_101_b &lt;- start_101
+
+start_101_b$b[start_101_b$b != 0] &lt;- 0
+start_101_beta$beta[start_101_beta$beta != 0] &lt;- 0
+start_101_theta$theta[start_101_theta$theta != 0] &lt;- 1
+
+K &lt;- diag(p - val_num.eig)
+colnames(K) &lt;- paste0(&quot;p&quot;, seq.int(val_num.eig + 1L, p))
+
+form &lt;- formula(m)
+environment(form) &lt;- environment()  # make K available to propto()
+
+ctrl &lt;- glmmTMBControl(
+  start_method = list(method = NULL, jitter.sd = 0),
+  # Add the SAME optimizer/settings used for Model_res_101, if non-default.
+  optCtrl = list(iter.max = 1000, eval.max = 1000)
+)
+
+refits1 &lt;- glmmTMB(
+      form,
+      data = m$frame,
+      family = stats::binomial(link = &quot;logit&quot;),
+      REML = FALSE,
+      start = start_101_beta,
+      control = ctrl
+    )
+
+refits2 &lt;- glmmTMB(
+      form,
+      data = m$frame,
+      family = stats::binomial(link = &quot;logit&quot;),
+      REML = FALSE,
+      start = start_101_theta,
+      control = ctrl
+    )</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; false convergence (8). See vignette(&#39;troubleshooting&#39;),
+## help(&#39;diagnose&#39;)</code></pre>
+<pre class="r"><code>refits3 &lt;- glmmTMB(
+      form,
+      data = m$frame,
+      family = stats::binomial(link = &quot;logit&quot;),
+      REML = FALSE,
+      start = start_101_b,
+      control = ctrl
+    )</code></pre>
+<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)
+## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
+## problem; false convergence (8). See vignette(&#39;troubleshooting&#39;),
+## help(&#39;diagnose&#39;)</code></pre>
+<pre class="r"><code># Comparison
+## Parameter comparison
+refits_parameter &lt;- data.frame(
+  ori = Model_res_101$fit$par,
+  beta = refits1$fit$par,
+  theta = refits2$fit$par,
+  b = refits3$fit$par
+)
+
+## Model convergence comparison
+ModelComparison_refit &lt;- data.frame(
+  fit = c(&quot;ori&quot;, &quot;beta&quot;, &quot;theta&quot;, &quot;b&quot;),
+  objective = c(
+    Model_res_101$fit$objective,
+    refits1$fit$objective,
+    refits2$fit$objective,
+    refits3$fit$objective
+  ),
+  convergence = c(
+    Model_res_101$fit$convergence,
+    refits1$fit$convergence,
+    refits2$fit$convergence,
+    refits3$fit$convergence
+  ),
+  pdHess = c(
+    Model_res_101$sdr$pdHess,
+    refits1$sdr$pdHess,
+    refits2$sdr$pdHess,
+    refits3$sdr$pdHess
+  )
+)
+print(ModelComparison_refit)</code></pre>
+<pre><code>##     fit objective convergence pdHess
+## 1   ori  37.33896           0   TRUE
+## 2  beta  37.31827           0   TRUE
+## 3 theta  41.36105           1  FALSE
+## 4     b  38.69669           1  FALSE</code></pre>
+<!-- # Model fixing by simplifying correlation structure -->
+<!-- ```{r} -->
+<!-- # Try to simplify the correlation structure (rr(sp + 0 | id, 1)) -->
+<!-- Model_rr1 <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 1, -->
+<!--                       yX = data$yX, P_J = eigen(S_J)$vectors, -->
+<!--                       val_num.eig = val_num.eig, Distribution = fam_type, -->
+<!--                       null = FALSE, p = p, site = FALSE) -->
+<!-- summary(Model_rr1$fit) -->
+<!-- # Try to remove the correlation structure -->
+<!-- Model_rr0 <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE, LV_num = 1, -->
+<!--                       yX = data$yX, P_J = eigen(S_J)$vectors, -->
+<!--                       val_num.eig = val_num.eig, Distribution = fam_type, -->
+<!--                       null = FALSE, p = p, site = FALSE) -->
+<!-- summary(Model_rr0$fit) -->
+<!-- ``` -->
+</div>
+</div>
 </div>
 
 

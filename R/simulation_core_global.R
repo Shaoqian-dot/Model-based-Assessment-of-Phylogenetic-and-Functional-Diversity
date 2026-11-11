@@ -65,13 +65,26 @@ fit_models <- function(dat,
       glmm_no_rr_warning_msgs = fit_glmm_no_rr$warning_msgs,
       glmm_no_rr_null_warning_msgs = fit_glmm_no_rr_null$warning_msgs,
       glmm_no_rr_convergence = fit_glmm_no_rr$convergence,
+      glmm_no_rr_null_convergence = fit_glmm_no_rr_null$convergence,
       glmm_no_rr_pdHess = fit_glmm_no_rr$pdHess,
+      glmm_no_rr_null_pdHess = fit_glmm_no_rr_null$pdHess,
+      glmm_no_rr_selected_attempt = fit_glmm_no_rr$selected_attempt,
+      glmm_no_rr_null_selected_attempt = fit_glmm_no_rr_null$selected_attempt,
+      glmm_no_rr_needs_refit = fit_glmm_no_rr$needs_refit,
+      glmm_no_rr_null_needs_refit = fit_glmm_no_rr_null$needs_refit,
       glmm_rr = lrt_rr$p_value,
       glmm_rr_status = lrt_rr$status,
       glmm_rr_warning_msgs = fit_glmm_rr$warning_msgs,
       glmm_rr_null_warning_msgs = fit_glmm_rr_null$warning_msgs,
       glmm_rr_convergence = fit_glmm_rr$convergence,
-      glmm_rr_pdHess = fit_glmm_rr$pdHess
+      glmm_rr_null_convergence = fit_glmm_rr_null$convergence,
+      glmm_rr_pdHess = fit_glmm_rr$pdHess,
+      glmm_rr_null_pdHess = fit_glmm_rr_null$pdHess,
+      glmm_rr_selected_attempt = fit_glmm_rr$selected_attempt,
+      glmm_rr_null_selected_attempt = fit_glmm_rr_null$selected_attempt,
+      glmm_rr_needs_refit = fit_glmm_rr$needs_refit,
+      glmm_rr_null_needs_refit = fit_glmm_rr_null$needs_refit
+      
     )
     
     # data.frame(
@@ -116,8 +129,15 @@ fit_models <- function(dat,
       ),
       glmm_no_rr_status = 'Success',
       glmm_no_rr_warning_msgs = fit_glmm_no_rr$warning_msgs,
+      glmm_no_rr_null_warning_msgs =  NA,
       glmm_no_rr_convergence = fit_glmm_no_rr$convergence,
+      glmm_no_rr_null_convergence = NA,
       glmm_no_rr_pdHess = fit_glmm_no_rr$pdHess,
+      glmm_no_rr_null_pdHess = NA,
+      glmm_no_rr_selected_attempt = fit_glmm_no_rr$selected_attempt,
+      glmm_no_rr_null_selected_attempt = NA,
+      glmm_no_rr_needs_refit = fit_glmm_no_rr$needs_refit,
+      glmm_no_rr_null_needs_refit = NA,
       glmm_rr = pchisq(
         chi_square_rr,
         df = val_num.eig,
@@ -125,8 +145,15 @@ fit_models <- function(dat,
       ),
       glmm_rr_status = 'Success',
       glmm_rr_warning_msgs = fit_glmm_rr$warning_msgs,
+      glmm_rr_null_warning_msgs = NA, 
       glmm_rr_convergence = fit_glmm_rr$convergence,
-      glmm_rr_pdHess = fit_glmm_rr$pdHess
+      glmm_rr_null_convergence = NA,
+      glmm_rr_pdHess = fit_glmm_rr$pdHess,
+      glmm_rr_null_pdHess = NA,
+      glmm_rr_selected_attempt = fit_glmm_rr$selected_attempt,
+      glmm_rr_null_selected_attempt = NA,
+      glmm_rr_needs_refit = fit_glmm_rr$needs_refit,
+      glmm_rr_null_needs_refit = NA
     )
   }
   
@@ -216,7 +243,7 @@ fit_models <- function(dat,
     
     res_all <- pmap(axis_method_tbl, function(axis_method, Methods_para) {
       
-      val_num.eig <- get_num.eig(
+      val_num.eig <<- get_num.eig(
         Methods = axis_method,
         Methods_para = Methods_para,
         D = D_J[-p, -p] # Remove eigenvalue 0
@@ -237,7 +264,7 @@ fit_models <- function(dat,
         silent = TRUE
       )
       
-      fit_glmm_rr <- try(
+      fit_glmm_rr <<- try(
         fit_model(
           type = "p_mid",
           matrix_type = "P_J",

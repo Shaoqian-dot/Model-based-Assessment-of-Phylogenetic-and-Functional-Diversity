@@ -20,3 +20,11 @@ rmarkdown::render(
   input = "exploration/Solve Model Convergence Issue.Rmd",
   output_file = "exploration/Solve-Model-Convergence-Issue_r64.html"
 )
+
+rmarkdown::render(
+  "exploration/Solve_Model_Convergence_Issue_r8.Rmd",
+  params = list(seed = 10),
+  output_file = "Solve-Model-Convergence-Issue_r8_seed10.html"
+)
+
+

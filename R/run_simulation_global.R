@@ -223,22 +223,40 @@ run_simulation <- function(
               glmm_no_rr_warning_msgs,
               glmm_no_rr_null_warning_msgs,
               glmm_no_rr_convergence,
+              glmm_no_rr_null_convergence,
               glmm_no_rr_pdHess,
+              glmm_no_rr_null_pdHess,
+              glmm_no_rr_selected_attempt,
+              glmm_no_rr_null_selected_attempt,
+              glmm_no_rr_needs_refit,
+              glmm_no_rr_null_needs_refit,
               glmm_rr_pvalue,
               glmm_rr_status,
               glmm_rr_warning_msgs,
               glmm_rr_null_warning_msgs,
               glmm_rr_convergence,
-              glmm_rr_pdHess
+              glmm_rr_null_convergence,
+              glmm_rr_pdHess,
+              glmm_rr_null_pdHess,
+              glmm_rr_selected_attempt,
+              glmm_rr_null_selected_attempt,
+              glmm_rr_needs_refit,
+              glmm_rr_null_needs_refit
             ),
             names_to = c("model", ".value"),
-            names_pattern = "(glmm_(?:no_rr|rr))_(pvalue|status|warning_msgs|null_warning_msgs|convergence|pdHess)"
+            names_pattern = "(glmm_(?:no_rr|rr))_(pvalue|status|warning_msgs|null_warning_msgs|convergence|null_convergence|pdHess|null_pdHess|selected_attempt|null_selected_attempt|needs_refit|null_needs_refit)"
           ) %>%
           dplyr::rename(
             alt_warning_msgs = warning_msgs,
             null_warning_msgs = null_warning_msgs,
             alt_convergence = convergence,
-            alt_pdHess = pdHess
+            null_convergence = null_convergence,
+            alt_pdHess = pdHess,
+            null_pdHess = null_pdHess,
+            alt_selected_attempt = selected_attempt,
+            null_selected_attempt = null_selected_attempt,
+            alt_needs_refit = needs_refit,
+            null_needs_refit = null_needs_refit
           ) %>%
           dplyr::mutate(
             method = "model_based"

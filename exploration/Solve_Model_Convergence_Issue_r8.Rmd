@@ -1,0 +1,434 @@
+---
+title: "Solve Model Convergence Issue_r8"
+author: "Shaoqian Huang"
+date: "`r Sys.Date()`"
+output: html_document
+params:
+  seed:
+    value: 1
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(ape)
+library(MASS)
+library(glmmTMB)
+library(dplyr)   
+library(DHARMa)
+source('../R/getData_current.R')
+source('../R/MeanAbund.R')
+source('../R/U_current.R')
+source('../R/fit_model_current2.R')
+source('../R/get_num.eig.R')
+load('../data/Para_PCV.RData')
+
+# Model refitting function
+refit <- function(seed) {
+  set.seed(seed)
+
+  update(
+    Model$fit,
+    family = stats::binomial(link = "logit"),
+    data = Model$fit$frame,
+    control = glmmTMBControl(
+      start_method = list(method = "res", jitter.sd = 0.2),
+      optCtrl = list(iter.max = 1000, eval.max = 1000)
+    )
+  )
+}
+```
+
+# 1 Parameters
+```{r}
+#seedID <- params$seed
+seedID <- 3
+set.seed(seedID)
+p <- 10
+NOPS <- 2# Number of pairs of swaps 
+r <- 8
+q <- 5
+alpha <- log(9 / 4)
+beta <- log(4)
+quantile <- 0.35
+Eigen <- 3 # Build correlation by extracting factor loading from the real data set
+fam_type <- 'binomial'
+Absence <- 'TRUE'
+FactorLoading <- Lambda
+
+# Subsample from the original pool containing 115 species
+Subsample <- sample(TruePara, p)
+
+# Build up the subtree and calculate its distance matrix
+subtree <- keep.tip(tree, names(Subsample))
+DM <- cophenetic.phylo(subtree)
+S <- max(DM) - DM
+J <- diag(1, p) - (1/p) * matrix(1, p, p)
+S_J <- J %*% S %*% J
+
+# The number of main axes important in signalling diversity changes
+val_num.eig <- get_num.eig(Methods = 'Method3', 
+                           Methods_para = NA,
+                           D = diag(eigen(S_J)$values)[-p, -p])
+```
+
+# 2 Data Generation
+```{r cars}
+data <- getData(DM_phy_func = DM, q = q, alpha = alpha, beta = beta,
+                r = r, quantile = quantile, Eigen = Eigen,
+                Distribution = fam_type, p = p,
+                     Absence = TRUE, Subsample = Subsample,
+                FactorLoading = FactorLoading, NOS = NOPS)
+
+data$yX %>%
+  dplyr::group_by(com) %>%
+  dplyr::summarise(
+    n = dplyr::n(),
+    presences = sum(y),
+    prevalence = mean(y),
+    .groups = "drop"
+  )
+
+xtabs(y ~ com + sp, data = data$yX)
+```
+
+# 3 Modelling
+```{r}
+Model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 2,
+                      yX = data$yX, P_J = eigen(S_J)$vectors, 
+                      val_num.eig = val_num.eig, Distribution = fam_type, 
+                      null = FALSE, p = p, site = FALSE)
+```
+
+
+# 4 Model fixing 
+## 4.1 by changing a different optimizer (the first try)
+```{r}
+K_names <- paste0("p", (val_num.eig + 1):p)
+K <- diag(length(K_names))
+dimnames(K) <- list(K_names, K_names)
+
+# Try optimizer optim
+Model_optim <- update(Model$fit,
+                      family = stats::binomial(link = "logit"),
+                      data = Model$fit$frame,
+                              control=glmmTMBControl(optimizer=optim,
+                                                     optArgs=list(method="BFGS")))
+# Comparison
+## Compare parameters
+p1 <- Model$fit$fit$par
+p2 <- Model_optim$fit$par
+
+stopifnot(identical(names(p1), names(p2)))
+
+parameter_comparison <- data.frame(
+  component = names(p1),
+  index = ave(seq_along(p1), names(p1), FUN = seq_along),
+  nlminb = unname(p1),
+  optim = unname(p2),
+  difference = unname(p2 - p1)
+)
+
+
+## Compare model convergence
+ModelComparison_optimizer<- data.frame(
+  fit = c("nlminb", "optim"),
+  objective = c(
+    Model$fit$fit$objective,
+    Model_optim$fit$objective
+  ),
+  convergence = c(
+    Model$convergence,
+    Model_optim$fit$convergence
+  ),
+  pdHess = c(
+    Model$pdHess,
+    Model_optim$sdr$pdHess
+  )
+)
+print(ModelComparison_optimizer)
+```
+### 4.1.1 Check what is the conveyed starting values to Model_optim
+```{r}
+start <- Model_optim$obj$par
+final <- Model_optim$fit$par
+
+data.frame(
+  component = names(start),
+  start = unname(start),
+  final = unname(final)
+)
+
+print(all.equal(Model$fit$obj$par, Model_optim$obj$par))
+print(Model$fit$obj$par)
+#print(Model_optim$obj$par)
+
+print(all.equal(Model_optim$obj$env$parameters$b, 
+          Model$fit$obj$env$parameters$b))
+#print(Model_optim$obj$env$parameters$b)
+print(Model$fit$obj$env$parameters$b)
+```
+The outputs say that the starting values conveyed into Model_optim aren't changed even though we get Model_optim from updating Model$fit. 
+
+## 4.2 Model fixing by changing starting values as Model_optim's estimates (the first try)
+```{r}
+# Try a different starting value
+start_opt <- Model_optim$obj$env$parList(
+  Model_optim$fit$par,
+  Model_optim$fit$parfull
+)
+
+start_opt <- start_opt[lengths(start_opt) > 0]
+
+fit_formula <- formula(Model_optim)
+environment(fit_formula) <- environment()  # makes the current K available
+
+Model_restart <- update(
+  Model_optim,
+  formula = fit_formula,
+  data = Model_optim$frame,
+  family = binomial(link = "logit"),
+  start = start_opt
+)
+
+p3 <- Model_optim$fit$par
+p4 <- Model_restart$fit$par
+
+stopifnot(identical(names(p3), names(p4)))
+
+# Comparison
+## Compare parameters
+parameter_comparison_restart <- data.frame(
+  component = names(p3),
+  index = ave(seq_along(p3), names(p3), FUN = seq_along),
+  optim = unname(p1),
+  BFGS = unname(p3),
+  BFGS_restart = unname(p4)
+)
+
+## Compare model convergence
+ModelComparison_restart <- data.frame(
+  fit = c("BFGS", "BFGS restart"),
+  objective = c(
+    Model_optim$fit$objective,
+    Model_restart$fit$objective
+  ),
+  convergence = c(
+    Model_optim$fit$convergence,
+    Model_restart$fit$convergence
+  ),
+  pdHess = c(
+    Model_optim$sdr$pdHess,
+    Model_restart$sdr$pdHess
+  )
+)
+
+print(ModelComparison_restart)
+```
+## 4.3 By using reduced-rank starting-value settings (the second try)
+```{r}
+seeds <- c(101 : 120)
+
+runs <- lapply(seeds, function(seed) {
+  warnings <- character()
+
+  fit <- tryCatch(
+    withCallingHandlers(
+      refit(seed),
+      warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        tryInvokeRestart("muffleWarning")
+      }
+    ),
+    error = function(e) e
+  )
+
+  failed <- inherits(fit, "error")
+
+  list(
+    fit = if (failed) NULL else fit,
+    warnings = warnings,
+    error = if (failed) conditionMessage(fit) else NA_character_
+  )
+})
+
+fits <- lapply(runs, `[[`, "fit")
+
+results <- data.frame(
+  seed = seeds,
+  objective = vapply(fits, function(m)
+    if (is.null(m)) NA_real_ else m$fit$objective, numeric(1)),
+  convergence = vapply(fits, function(m)
+    if (is.null(m)) NA_integer_ else as.integer(m$fit$convergence), integer(1)),
+  pdHess = vapply(fits, function(m)
+    if (is.null(m)) NA else m$sdr$pdHess, logical(1)),
+  warnings = vapply(runs, function(x)
+    if (length(x$warnings)) paste(x$warnings, collapse = " | ")
+    else NA_character_, character(1)),
+  error = vapply(runs, function(x) x$error, character(1))
+)
+results <- dplyr::arrange(results, objective)
+print(results)
+```
+
+### 4.3.1 Model Diagnosis
+```{r}
+Model_res_101 <- fits[[1]]
+
+# Model diagnosis
+# res<- simulateResiduals(
+#   fittedModel = Model_res_101,   #Your glmmTMB object
+#   n = 1000              # Normally in 500–1000
+# )
+
+## Residual plot: dunn-smyth vs predicted values
+fitted_values <- fitted(Model_res_101)
+dunn_smyth_residuals <- residuals(Model_res_101, type = "dunn-smyth")
+
+plot(
+  fitted_values,
+  dunn_smyth_residuals,
+  pch = 16,
+  col = adjustcolor("black", alpha.f = 0.35),
+  xlab = "Fitted values",
+  ylab = " Dunn-Smyth residuals"
+)
+
+abline(h = 0, col = "red", lty = 2, lwd = 2)
+
+lines(
+  lowess(fitted_values, dunn_smyth_residuals),
+  col = "blue",
+  lwd = 2
+)
+```
+
+<!-- ### 4.3.2 Investigate starting values of the best models -->
+<!-- ```{r} -->
+<!-- best <- fits[match(c(101, 102, 107, 111), seeds)] -->
+
+<!-- # Comparison of starting values -->
+<!-- ## Extract starting values -->
+<!-- Model_res_101 <- fits[[1]] -->
+<!-- Model_res_102 <- fits[[2]] -->
+<!-- Model_res_107 <- fits[[7]] -->
+<!-- Model_res_111 <- fits[[11]] -->
+<!-- Model_res_104 <- fits[[4]] #A bad model -->
+
+<!-- Start <- data.frame( -->
+<!--  Parameters = c(names(Model_res_101$obj$par), -->
+<!--                 paste0('b', 1 : length(Model_res_104$obj$env$parameters$b))), -->
+<!--   Start101 = c(Model_res_101$obj$par, Model_res_101$obj$env$parameters$b), -->
+<!--   Start102 = c(Model_res_102$obj$par, Model_res_102$obj$env$parameters$b), -->
+<!--   Start107 = c(Model_res_107$obj$par, Model_res_107$obj$env$parameters$b), -->
+<!--   Start111 = c(Model_res_111$obj$par, Model_res_111$obj$env$parameters$b), -->
+<!--   Start104 = c(Model_res_104$obj$par, Model_res_104$obj$env$parameters$b) -->
+<!-- ) -->
+
+<!-- # Refit a model with part of the starting values changed -->
+<!-- m <- Model_res_101 -->
+<!-- # Extract Model_res_101's starting values -->
+<!-- start_101 <- m$obj$env$parList( -->
+<!--   x   = m$obj$par, -->
+<!--   par = unlist(m$obj$env$parameters) -->
+<!-- ) -->
+
+<!-- start_101 <- start_101[lengths(start_101) > 0] -->
+
+<!-- # Modify beta, theta, and b -->
+<!-- start_101_beta <-  start_101 -->
+<!-- start_101_theta <- start_101 -->
+<!-- start_101_b <- start_101 -->
+
+<!-- start_101_b$b[start_101_b$b != 0] <- 0 -->
+<!-- start_101_beta$beta[start_101_beta$beta != 0] <- 0 -->
+<!-- start_101_theta$theta[start_101_theta$theta != 0] <- 1 -->
+
+<!-- K <- diag(p - val_num.eig) -->
+<!-- colnames(K) <- paste0("p", seq.int(val_num.eig + 1L, p)) -->
+
+<!-- form <- formula(m) -->
+<!-- environment(form) <- environment()  # make K available to propto() -->
+
+<!-- ctrl <- glmmTMBControl( -->
+<!--   start_method = list(method = NULL, jitter.sd = 0), -->
+<!--   # Add the SAME optimizer/settings used for Model_res_101, if non-default. -->
+<!--   optCtrl = list(iter.max = 1000, eval.max = 1000) -->
+<!-- ) -->
+
+<!-- refits1 <- glmmTMB( -->
+<!--       form, -->
+<!--       data = m$frame, -->
+<!--       family = stats::binomial(link = "logit"), -->
+<!--       REML = FALSE, -->
+<!--       start = start_101_beta, -->
+<!--       control = ctrl -->
+<!--     ) -->
+
+<!-- refits2 <- glmmTMB( -->
+<!--       form, -->
+<!--       data = m$frame, -->
+<!--       family = stats::binomial(link = "logit"), -->
+<!--       REML = FALSE, -->
+<!--       start = start_101_theta, -->
+<!--       control = ctrl -->
+<!--     ) -->
+
+<!-- refits3 <- glmmTMB( -->
+<!--       form, -->
+<!--       data = m$frame, -->
+<!--       family = stats::binomial(link = "logit"), -->
+<!--       REML = FALSE, -->
+<!--       start = start_101_b, -->
+<!--       control = ctrl -->
+<!--     ) -->
+
+<!-- # Comparison -->
+<!-- ## Parameter comparison -->
+<!-- refits_parameter <- data.frame( -->
+<!--   ori = Model_res_101$fit$par, -->
+<!--   beta = refits1$fit$par, -->
+<!--   theta = refits2$fit$par, -->
+<!--   b = refits3$fit$par -->
+<!-- ) -->
+
+<!-- ## Model convergence comparison -->
+<!-- ModelComparison_refit <- data.frame( -->
+<!--   fit = c("ori", "beta", "theta", "b"), -->
+<!--   objective = c( -->
+<!--     Model_res_101$fit$objective, -->
+<!--     refits1$fit$objective, -->
+<!--     refits2$fit$objective, -->
+<!--     refits3$fit$objective -->
+<!--   ), -->
+<!--   convergence = c( -->
+<!--     Model_res_101$fit$convergence, -->
+<!--     refits1$fit$convergence, -->
+<!--     refits2$fit$convergence, -->
+<!--     refits3$fit$convergence -->
+<!--   ), -->
+<!--   pdHess = c( -->
+<!--     Model_res_101$sdr$pdHess, -->
+<!--     refits1$sdr$pdHess, -->
+<!--     refits2$sdr$pdHess, -->
+<!--     refits3$sdr$pdHess -->
+<!--   ) -->
+<!-- ) -->
+<!-- print(ModelComparison_refit) -->
+<!-- ``` -->
+
+<!-- # Model fixing by simplifying correlation structure -->
+<!-- ```{r} -->
+<!-- # Try to simplify the correlation structure (rr(sp + 0 | id, 1)) -->
+<!-- Model_rr1 <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 1, -->
+<!--                       yX = data$yX, P_J = eigen(S_J)$vectors, -->
+<!--                       val_num.eig = val_num.eig, Distribution = fam_type, -->
+<!--                       null = FALSE, p = p, site = FALSE) -->
+<!-- summary(Model_rr1$fit) -->
+<!-- # Try to remove the correlation structure -->
+<!-- Model_rr0 <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = FALSE, LV_num = 1, -->
+<!--                       yX = data$yX, P_J = eigen(S_J)$vectors, -->
+<!--                       val_num.eig = val_num.eig, Distribution = fam_type, -->
+<!--                       null = FALSE, p = p, site = FALSE) -->
+<!-- summary(Model_rr0$fit) -->
+<!-- ``` -->
