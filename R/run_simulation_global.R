@@ -124,7 +124,7 @@ run_simulation <- function(
                 NOS = NOS,
                 V_J = eigen(S_J)$vectors[, -p]
               )
-              
+              assign("dat", dat, envir = .GlobalEnv)
             } else {
               
               NOPS <- switch(

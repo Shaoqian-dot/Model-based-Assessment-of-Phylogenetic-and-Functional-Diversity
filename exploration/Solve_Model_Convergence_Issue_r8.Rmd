@@ -94,10 +94,39 @@ xtabs(y ~ com + sp, data = data$yX)
 
 # 3 Modelling
 ```{r}
+# summarise_fits <- function(fits) {
+#   do.call(rbind, lapply(seq_along(fits), function(i) {
+#     x <- fits[[i]]
+# 
+#     if (is.null(x) || is.null(x$fit)) {
+#       return(data.frame(
+#         refit = i,
+#         objective = NA_real_,
+#         convergence = NA_integer_,
+#         pdHess = NA,
+#         msgs = "Fit failed"
+#       ))
+#     }
+# 
+#     data.frame(
+#       refit = i,
+#       objective = x$fit$fit$objective,
+#       convergence = x$fit$fit$convergence,
+#       pdHess = x$fit$sdr$pdHess,
+#       msgs = if (length(x$warnings)) {
+#         paste(x$warnings, collapse = " | ")
+#       } else {
+#         "None"
+#       }
+#     )
+#   }))
+# }
 Model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 2,
                       yX = data$yX, P_J = eigen(S_J)$vectors, 
                       val_num.eig = val_num.eig, Distribution = fam_type, 
                       null = FALSE, p = p, site = FALSE)
+#sum_refits <- summarise_fits(fits)
+
 ```
 
 
