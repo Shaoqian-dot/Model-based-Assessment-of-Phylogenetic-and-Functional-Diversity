@@ -74,7 +74,7 @@ nsim = 1 # The number of simulations
 
 seed <- data.frame(
   seed = seq(
-    from = 1000,
+    from = 1047,
     by = 1,
     length.out = nsim
   ))

@@ -251,13 +251,23 @@ fit_model <- function(type, matrix_type, rr,
           negativeLogLik_group[i] <- fits[[i]]$fit$fit$objective
         }
         
-        if (!is.null(best_refit) & 
-            abs(best_refit$fit$fit$objective - min(negativeLogLik_group)) < 1) {
-          # 1 is the threshold we can tolerate between the selected model and the model having the smallest negative log-likelihood 
+        # The following is my strategy that select a converged model having relatively smaller negative log-likelihood;
+        #otherwise we use the model having the smallest negative log likelihood no matter is converge or not.
+        if(is.null(best_refit)) {
+          selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
+        } else if (abs(best_refit$fit$fit$objective - min(negativeLogLik_group)) < 1) {
           selected <- best_refit
         } else {
           selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
         }
+        
+        # if (!is.null(best_refit) & 
+        #     abs(best_refit$fit$fit$objective - min(negativeLogLik_group)) < 1) {
+        #   # 1 is the threshold we can tolerate between the selected model and the model having the smallest negative log-likelihood 
+        #   selected <- best_refit
+        # } else {
+        #   selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
+        # }
         #assign("fits", fits, envir = .GlobalEnv)
       }
       
