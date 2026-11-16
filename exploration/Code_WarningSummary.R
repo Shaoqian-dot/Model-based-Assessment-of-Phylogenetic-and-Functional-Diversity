@@ -1,7 +1,7 @@
 rm(list = ls())
 library(here)
 
-folder <- 'Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE_p_10_r_8_muRef_MS_Default'
+folder <- 'Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE_p_5_muRef'
 
 files <- list.files(
   here("output", folder),
@@ -57,6 +57,3 @@ warning_summary <- res %>%
     Eigen, test, com, desc(n)
   )
 
-
-if(!is.null(best_refit) & 
-   abs(best_refit$fit$fit$objective - 5) < 1){}
