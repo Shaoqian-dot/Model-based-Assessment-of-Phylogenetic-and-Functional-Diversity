@@ -244,22 +244,22 @@ fit_model <- function(type, matrix_type, rr,
             selected_attempt <- i
           }
         }
-        
-        # Select a best refit.
+        # Record all the negative log likelihoods.
         negativeLogLik_group <- c()
         for (i in 1 :21) {
           negativeLogLik_group[i] <- fits[[i]]$fit$fit$objective
         }
-        
-        # The following is my strategy that select a converged model having relatively smaller negative log-likelihood;
+        # The following is strategy 1 that select a converged model having relatively smaller negative log-likelihood;
         #otherwise we use the model having the smallest negative log likelihood no matter is converge or not.
-        if(is.null(best_refit)) {
-          selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
-        } else if (abs(best_refit$fit$fit$objective - min(negativeLogLik_group)) < 1) {
-          selected <- best_refit
-        } else {
-          selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
-        }
+        
+
+        # if(is.null(best_refit)) {
+        #   selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
+        # } else if (abs(best_refit$fit$fit$objective - min(negativeLogLik_group)) < 1) {
+        #   selected <- best_refit
+        # } else {
+        #   selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
+        # }
         
         # if (!is.null(best_refit) & 
         #     abs(best_refit$fit$fit$objective - min(negativeLogLik_group)) < 1) {
@@ -268,7 +268,15 @@ fit_model <- function(type, matrix_type, rr,
         # } else {
         #   selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
         # }
-        #assign("fits", fits, envir = .GlobalEnv)
+        
+        # Strategy 2: select a good model with the smallest negative log likelihood among all the converged models;
+        # If there are no converged models among all the 20 refits, choose the model with the smallest negative log likelihood. 
+        if (!is.null(best_refit)) {
+          selected <- best_refit
+        } else {
+          selected <- fits[[which(negativeLogLik_group == min(negativeLogLik_group))]]
+        }
+        assign("fits", fits, envir = .GlobalEnv)
       }
       
       fit <- selected$fit #Note that if none of the 20 refits is acceptable, retain the initial fit.

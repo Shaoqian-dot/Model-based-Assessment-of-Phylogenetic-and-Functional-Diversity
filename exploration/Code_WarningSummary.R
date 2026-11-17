@@ -1,7 +1,7 @@
 rm(list = ls())
 library(here)
-
-folder <- 'Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE_p_5_muRef'
+library(dplyr)
+folder <- 'Phy_fam_binomial_test_Both_axis_method_Method3_Eigen_3_Absence_TRUE_p_20_r_8_muRef_MS_res'
 
 files <- list.files(
   here("output", folder),
@@ -39,7 +39,7 @@ res_summary <- res_all %>%
   )
 
 res <- res_all
-Target_Variable <- "status"
+Target_Variable <- "null_needs_refit"
 group_vars <- c(
   "p", "r", "axis_method", "model",
   "Eigen", "test", "com",

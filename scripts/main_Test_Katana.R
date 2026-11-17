@@ -176,12 +176,15 @@ res <- run_simulation(
 run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
                    '_axis_method_', axis_method, '_Eigen_',
                    Eigen, '_Absence_', Absence, '_p_', p, 
-                   '_r_', r, '_muRef_MS_res') #mu... indicates how we set abundance of ref-species.
+                   '_r_', r, '_muRef_MS_res_S2') #mu... indicates how we set abundance of ref-species.
 #muRef: use ref-speices's own abundance;
 #muMeanOverall: use average mu across the 115 species;
 #muMean: use average mu across p species.
 # MS: multiple swap
 # res: start_method = list(method = "res", jitter.sd = 0.1).
+
+# S2: Strategy 2: select a good model with the smallest negative log likelihood among all the converged models;
+# If there are no converged models among all the 20 refits, choose the model with the smallest negative log likelihood. 
 
 out_dir <- here("output", run_name)
 
