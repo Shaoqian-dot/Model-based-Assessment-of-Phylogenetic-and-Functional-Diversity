@@ -172,10 +172,16 @@ res <- run_simulation(
 ## Save results
 ############################################################
 
-run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
-                   '_axis_method_', axis_method, '_Eigen_',
-                   Eigen, '_Absence_', Absence, '_p_', p, 
-                   '_r_', r, '_muRef_MS_res_S3_sim1000') #mu... indicates how we set abundance of ref-species.
+run_name <- paste0(
+  "Phy_fam_", family,
+  "_test_", test,
+  "_axis_method_", axis_method,
+  "_Eigen_", Eigen,
+  "_Absence_", Absence,
+  "_p_", paste0(p, collapse = ""),
+  "_r_", paste0(r, collapse = ""),
+  "_muRef_MS_res_S3_sim1000"
+) #mu... indicates how we set abundance of ref-species.
 #muRef: use ref-speices's own abundance;
 #muMeanOverall: use average mu across the 115 species;
 #muMean: use average mu across p species.
