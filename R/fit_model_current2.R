@@ -26,31 +26,88 @@ fit_model <- function(type, matrix_type, rr,
   }
   
   # Function for dealing with warning containing iteration limit or function evaluation limit reached
+  # fit_with_limit_retry <- function(attempt_seed, method = NULL, jitter.sd = 0) {
+  #   set.seed(attempt_seed)
+  #   result <- fit_once(method = method, jitter.sd = jitter.sd)
+  # 
+  #   limit_warning <- any(grepl(
+  #     "iteration limit reached without convergence|function evaluation limit reached without convergence",
+  #     result$warnings,
+  #     ignore.case = TRUE
+  #   ))
+  # 
+  #   if (limit_warning) {
+  #     # Reuse the same randomized start; change only the optimizer limits.
+  #     set.seed(attempt_seed)
+  #     result <- tryCatch(
+  #       fit_once(list(iter.max = 1000, eval.max = 1000),
+  #                method = method, jitter.sd = jitter.sd),
+  #       error = function(e) {
+  #         message("Higher-limit retry failed: ", conditionMessage(e))
+  #         result
+  #       }
+  #     )
+  #   }
+  # 
+  #   result
+  # }
+
+  # The following retry function add an fixing if the warning message contains `false convergence`.
+  # Strategy is based on Strategy by using the following function (Can deal with iteration/evaluation limit and false convergence).
   fit_with_limit_retry <- function(attempt_seed, method = NULL, jitter.sd = 0) {
-    set.seed(attempt_seed)
+    if (!is.null(attempt_seed)) set.seed(attempt_seed)
     result <- fit_once(method = method, jitter.sd = jitter.sd)
-    
+
     limit_warning <- any(grepl(
       "iteration limit reached without convergence|function evaluation limit reached without convergence",
       result$warnings,
       ignore.case = TRUE
     ))
-    
+
     if (limit_warning) {
-      # Reuse the same randomized start; change only the optimizer limits.
-      set.seed(attempt_seed)
+      previous <- result
+      if (!is.null(attempt_seed)) set.seed(attempt_seed)
+
       result <- tryCatch(
-        fit_once(list(iter.max = 1000, eval.max = 1000), 
-                 method = method, jitter.sd = jitter.sd),
+        fit_once(
+          optCtrl = list(iter.max = 1000, eval.max = 1000),
+          method = method,
+          jitter.sd = jitter.sd
+        ),
         error = function(e) {
           message("Higher-limit retry failed: ", conditionMessage(e))
-          result
+          previous
         }
       )
     }
-    
+
+    false_convergence <- any(grepl(
+      "false convergence",
+      result$warnings,
+      ignore.case = TRUE
+    ))
+
+    if (false_convergence) {
+      previous <- result
+      if (!is.null(attempt_seed)) set.seed(attempt_seed)
+
+      result <- tryCatch(
+        fit_once(
+          method = method,
+          jitter.sd = jitter.sd,
+          optimizer = stats::optim,
+          optArgs = list(method = "BFGS")
+        ),
+        error = function(e) {
+          message("BFGS retry failed: ", conditionMessage(e))
+          previous
+        }
+      )
+    }
+
     result
   }
+  
   # acceptable() decides if a model is converged and pdHess == TRUE. 
   #If yes, acceptable() returns TRUE; if not, acceptable() returns FALSE.  
   acceptable <- function(result) {

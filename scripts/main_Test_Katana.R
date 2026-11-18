@@ -86,12 +86,11 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(20)
+p <- c(10, 20)
 
-r <- c(8)
+r <- c(8, 16, 32, 64)
 
-Eigen <- c(3)
-
+Eigen <- c(1)
 
 q <- 5
 
@@ -176,7 +175,7 @@ res <- run_simulation(
 run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
                    '_axis_method_', axis_method, '_Eigen_',
                    Eigen, '_Absence_', Absence, '_p_', p, 
-                   '_r_', r, '_muRef_MS_res_S2') #mu... indicates how we set abundance of ref-species.
+                   '_r_', r, '_muRef_MS_res_S3_sim1000') #mu... indicates how we set abundance of ref-species.
 #muRef: use ref-speices's own abundance;
 #muMeanOverall: use average mu across the 115 species;
 #muMean: use average mu across p species.
@@ -185,6 +184,8 @@ run_name <- paste0('Phy_', 'fam_', family,'_test_', test,
 
 # S2: Strategy 2: select a good model with the smallest negative log likelihood among all the converged models;
 # If there are no converged models among all the 20 refits, choose the model with the smallest negative log likelihood. 
+
+# S3: Based on Strategy 3 but also try to fix false convergence.
 
 out_dir <- here("output", run_name)
 
