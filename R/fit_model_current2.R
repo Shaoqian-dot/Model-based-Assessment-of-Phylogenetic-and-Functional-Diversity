@@ -255,8 +255,8 @@ fit_model <- function(type, matrix_type, rr,
       }
     }
     if (rr) {
-      method <- 'res'
-      jitter.sd <- 0.1
+      method <- NULL
+      jitter.sd <- 0
       
       base_formula <- paste(
         base_formula,

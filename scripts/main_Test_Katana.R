@@ -180,7 +180,7 @@ run_name <- paste0(
   "_Absence_", Absence,
   "_p_", paste0(p, collapse = ""),
   "_r_", paste0(r, collapse = ""),
-  "_muRef_MS_res_S3_sim1000"
+  "_muRef_MS_default_S3_sim1000"
 ) #mu... indicates how we set abundance of ref-species.
 #muRef: use ref-speices's own abundance;
 #muMeanOverall: use average mu across the 115 species;
