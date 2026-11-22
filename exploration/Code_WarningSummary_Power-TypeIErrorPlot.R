@@ -1,10 +1,11 @@
 rm(list = ls())
 library(here)
 library(dplyr)
+library(ggplot2)
 source('R/PanelPlot.R')
 source('R/model_ratio_table.R')
-#folder <- 'Eigen1_binomial_axis_methodMethod3_res'
 folder <- 'Phy_fam_binom_test_Both_axis_Method3_Eig_1_Abs_TRUE_p_1020_r_8163264_muRef_MS_default_S3_sim1000'
+#folder <- 'Phy_fam_bino_test_Both_axis_Method3_Eig_1_Abse_TRUE_p_1020_r_8163264_Ref_MS_res_S3_sim1000'
 
 files <- list.files(
   here("output", folder),
