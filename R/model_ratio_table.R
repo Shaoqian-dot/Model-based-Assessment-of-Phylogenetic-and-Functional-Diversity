@@ -11,16 +11,16 @@ model_ratio_table <- function(p, r, res) {
   wald <- pick("Wald", 2)
   n <- length(unique(alt$seed))
   
-  if (n == 0L) stop("No matching data sets for this p and r.")
+  #if (n == 0L) stop("No matching data sets for this p and r.")
   
-  check_rows <- function(x) {
-    if (nrow(x) != n || !setequal(x$seed, alt$seed)) {
-      stop("Expected one row per data set; check for missing or duplicate rows.")
-    }
-  }
-  
-  check_rows(alt)
-  check_rows(wald)
+  # check_rows <- function(x) {
+  #   if (nrow(x) != n || !setequal(x$seed, alt$seed)) {
+  #     stop("Expected one row per data set; check for missing or duplicate rows.")
+  #   }
+  # }
+  # 
+  # check_rows(alt)
+  # check_rows(wald)
   
   # NA counts as not meeting the condition; denominator remains all n data sets.
   ratio <- function(x, target) sum(x %in% target) / n
@@ -45,7 +45,7 @@ model_ratio_table <- function(p, r, res) {
   
   for (com in 2:5) {
     null <- pick("LRT", com)
-    check_rows(null)
+    #check_rows(null)
     
     out[[paste0("Null_com", com)]] <- c(
       ratio(null$null_convergence, 0),

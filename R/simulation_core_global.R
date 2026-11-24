@@ -7,7 +7,8 @@ fit_models <- function(dat,
                        S_J,
                        p,
                        q,
-                       axis_method = c('Method1', 'Method3', 'Both')){
+                       axis_method = c('Method1', 'Method3', 'Both'),
+                       numRefit = numRefit){
   # Likelihood Ratio Test
   get_lrt_row <- function(j, fit_glmm_no_rr, fit_glmm_rr, val_num.eig){
     
@@ -27,7 +28,8 @@ fit_models <- function(dat,
         Distribution = fam,
         null = TRUE,
         com_left = com_left,
-        p = p
+        p = p, 
+        numRefit = numRefit
       ),
       silent = TRUE
     )
@@ -43,7 +45,8 @@ fit_models <- function(dat,
         Distribution = fam,
         null = TRUE,
         com_left = com_left,
-        p = p
+        p = p,
+        numRefit = numRefit
       ),
       silent = TRUE
     )
@@ -262,7 +265,8 @@ fit_models <- function(dat,
           val_num.eig = val_num.eig,
           Distribution = fam,
           null = FALSE,
-          p = p
+          p = p,
+          numRefit = numRefit
         ),
         silent = TRUE
       )
@@ -277,7 +281,8 @@ fit_models <- function(dat,
           val_num.eig = val_num.eig,
           Distribution = fam,
           null = FALSE,
-          p = p
+          p = p,
+          numRefit = numRefit
         ),
         silent = TRUE
       )

@@ -128,7 +128,7 @@ tree$tip.label <- tree_species
 
 ### Filter community data by removing rare species
 ```{r}
-# Keep species missing in less than rare_threshold of plots.
+# Keep species missing in more than rare_threshold of plots.
 zero_threshold <- 0.55
 zero_prop <- colMeans(
   my.sample == 0,
@@ -148,7 +148,7 @@ species_to_keep <- species_columns[
 ]
 
 my.sample.filtered <- my.sample %>%
-  select(
+  dplyr::select(
     all_of(colnames(my.sample)[1:2]),
     all_of(species_to_keep)
   )
@@ -230,20 +230,21 @@ The reason we are interested into $\boldsymbol{V}_J$ is that the column space of
 
 ## Modelling and Modelling Diagnosis
 ```{r}
-# e <- new.env()
-# load("C:/Users/huang/OneDrive - UNSW/PhD Project/Model contrasts/Simulation/Simulation with wide settings/Code refactoring/Model-based assessment of PD and FD/Real application/Model/workspace_20260419.RData", envir = e)
-# 
-# model <- e$fit_Model_5
+e <- new.env()
+load("C:/Users/huang/OneDrive - UNSW/PhD Project/Github/Model based assessment of phylogenetic and functional divesity/results/Real Application/my_environment.RData", envir = e)
 
-model <- glmmTMB(
-  y ~ (1 | Site) + sp +
-    Community +
-    sp:Community +
-    rr(sp + 0 | id, 2),
-  family = "ordbeta",
-  REML = FALSE,
-  data = yX
-)
+model <- e$model_SiteEffect
+
+# model <- glmmTMB(
+#   y ~ (1 | Site) + sp +
+#     Community +
+#     sp:Community +
+#     rr(sp + 0 | id, 2),
+#   family = "ordbeta",
+#   REML = FALSE,
+#   data = yX
+# )
+  
 summary(model)
 ```
 
@@ -251,9 +252,16 @@ summary(model)
 ### Extract fixed and random effects
 ```{r}
 ## Estimates of fixed effects, eta_T
+nd <- model$frame
+#nd$id[] <- NA
+nd$site[] <- NA
 eta_T_hat <- predict(model, 
-                   type = "link",
-                   re.form = NA)
+                     newdata = nd,
+                     type = "link",
+                     re.form = NULL)
+# eta_T_hat <- predict(model, 
+#                    type = "link",
+#                    re.form = NA)
 
 # Arrange eta_T_hat into a matrix
 eta_T_hat <- matrix(
@@ -266,7 +274,7 @@ eta_T_hat <- matrix(
 eta_B_hat <- eta_T_hat %*% J 
 
 ##  Estimates of conditional random effects on y
-RR <- simulate_random_effects(model = model, uncertainty = TRUE)
+#RR <- simulate_random_effects(model = model, uncertainty = TRUE)
 ```
 
 ### Is $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$ consistent with randomized Rao's Q? 

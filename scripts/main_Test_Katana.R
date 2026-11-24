@@ -86,9 +86,9 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(40)
+p <- c(80)
 
-r <- c(8, 16, 32, 64)
+r <- c(8, 16)
 
 Eigen <- c(1)
 
@@ -112,6 +112,7 @@ beta <- log(4)
 quantile <- 0.35
 axis_method <- "Method3"
 Absence <- TRUE
+numRefit  <- 5 
 
 ############################################################
 ## Set random seed
@@ -165,7 +166,8 @@ res <- run_simulation(
   axis_method  = axis_method,
   Absence = Absence,
   FactorLoading = Lambda,
-  TruePara = TruePara
+  TruePara = TruePara,
+  numRefit = numRefit
 )
 
 ############################################################

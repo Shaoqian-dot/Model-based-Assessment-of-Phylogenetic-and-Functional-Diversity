@@ -44,8 +44,8 @@ refit <- function(seed) {
 #seedID <- params$seed
 seedID <- 3
 set.seed(seedID)
-p <- 20
-NOPS <- 4# Number of pairs of swaps 
+p <- 10
+NOPS <- 2# Number of pairs of swaps 
 r <- 8
 q <- 5
 alpha <- log(9 / 4)
@@ -124,7 +124,8 @@ summarise_fits <- function(fits) {
 Model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 2,
                       yX = data$yX, P_J = eigen(S_J)$vectors, 
                       val_num.eig = val_num.eig, Distribution = fam_type, 
-                      null = FALSE, p = p, site = FALSE)
+                      null = FALSE, p = p, site = FALSE,
+                      Refit = FALSE, numRefit = 5, method = 'res', jitter.sd = 0.1)
 sum_refits <- summarise_fits(fits)
 
 ```

@@ -220,22 +220,21 @@ D_J <- eigen(VC_phy_func_J)$values
 # Get the number of main directions in signalling PD/FD
 num.eig <- get_num.eig(Methods = 'Method3', NA, D = diag(eigen(J %*% VC_phy_func %*% J)$values[1 : (p -1)]))
 
-# Modelling
-model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
-                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
-                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p)$fit
-model_update <- up2date(model)
-
-model_rowEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
-                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
-                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p,
-                     site = FALSE, row_effect = TRUE)$fit
+# # Modelling
+model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
+                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors,
+                     val_num.eig = num.eig, Distribution = 'binomial',
+                     null = FALSE, p = p, site = FALSE, LV_num = 2, 
+                     method = 'res', jitter.sd = 0.2, Refit = FALSE)
 model_SiteEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
-                     val_num.eig = num.eig, Distribution = 'binomial', null = FALSE, p = p, site = TRUE, row_effect = FALSE)$fit
+                     val_num.eig = num.eig, Distribution = 'binomial', 
+                     null = FALSE, p = p, site = TRUE, LV_num = 2, 
+                     method = 'res', jitter.sd = 0.2, Refit = FALSE)
+save.image(file = "../results/Real Application/my_environment2.RData")
 
 # Compare the two models: model_rowEffect and model_SiteEffect
-anova(model_update, model_SiteEffect)
+#anova(model_update, model_SiteEffect)
 
 ```
 

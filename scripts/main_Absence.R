@@ -63,6 +63,7 @@ beta <- log(2)
 quantile <- 0.35
 Eigen <- 1
 NOS <- 2
+numRefit <- 5
 
 # Other parameters from the previous simulations
 signal <- NA
@@ -74,7 +75,7 @@ nsim = 1 # The number of simulations
 
 seed <- data.frame(
   seed = seq(
-    from = 1047,
+    from = 1048,
     by = 1,
     length.out = nsim
   ))
@@ -98,7 +99,8 @@ res_all <- seed |>
       axis_method = axis_method ,
       Absence = TRUE,
       FactorLoading = Lambda,
-      TruePara = TruePara
+      TruePara = TruePara,
+      numRefit = numRefit
     )
   })
 

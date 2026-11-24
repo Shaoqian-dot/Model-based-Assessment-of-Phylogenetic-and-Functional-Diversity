@@ -22,7 +22,8 @@ run_simulation <- function(
     axis_method,
     Absence,
     TruePara,
-    FactorLoading
+    FactorLoading,
+    numRefit
 ){
   
   grid <- tidyr::expand_grid(
@@ -209,7 +210,8 @@ run_simulation <- function(
           p = p,
           q = q,
           test = test,
-          axis_method = axis_method
+          axis_method = axis_method,
+          numRefit = numRefit
         )
 
         names(model_res)[names(model_res) %in% c("glmm_no_rr", "glmm_rr")] <-
