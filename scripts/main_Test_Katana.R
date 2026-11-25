@@ -112,7 +112,7 @@ beta <- log(4)
 quantile <- 0.35
 axis_method <- "Method3"
 Absence <- TRUE
-numRefit  <- 2 
+numFit  <- 3
 
 ############################################################
 ## Set random seed
@@ -167,7 +167,7 @@ res <- run_simulation(
   Absence = Absence,
   FactorLoading = Lambda,
   TruePara = TruePara,
-  numRefit = numRefit
+  numFit = numFit
 )
 
 ############################################################
@@ -180,7 +180,7 @@ run_name <- paste0(
   "_axis_method_", axis_method,
   "_Eigen_", Eigen,
   "_Absence_", Absence,
-  "_numRefit", numRefit,
+  "_numFit", numFit,
   "_p_", paste0(p, collapse = ""),
   "_r_", paste0(r, collapse = ""),
   "_muRef_MS_res_S3_sim1000"

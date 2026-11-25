@@ -1,6 +1,6 @@
 fit_model <- function(type, matrix_type, rr,
                       yX, P, P_J, val_num.eig, Distribution, 
-                      null, com_left, p, site = FALSE, LV_num = 2, numRefit = 20,
+                      null, com_left, p, site = FALSE, LV_num = 2, numFit = 20,
                       method = 'res',
                       jitter.sd = 0.1, Refit = TRUE){
   # Function for model fitting
@@ -264,7 +264,7 @@ fit_model <- function(type, matrix_type, rr,
       form <- as.formula(base_formula)
       
       # Distinct seeds give the initial fit and each refit different randomized starts.
-      attempt_seeds <- sample.int(.Machine$integer.max, numRefit)
+      attempt_seeds <- sample.int(.Machine$integer.max, numFit) 
       
       selected <- fit_with_limit_retry(attempt_seeds[1L], 
                                        method = method, jitter.sd = jitter.sd) # Dealing with warnings contain limit iteration/evaluations
@@ -276,9 +276,9 @@ fit_model <- function(type, matrix_type, rr,
       if (needs_refit & !is.null(method)) {
         best_refit <- NULL
         
-        fits <- vector("list", numRefit)
+        fits <- vector("list", numFit)
         fits[[1]] <- selected
-        for (i in 2 : numRefit) {
+        for (i in 2 : numFit) {
           candidate <- tryCatch(
             fit_with_limit_retry(attempt_seeds[i], 
                                  method = method, jitter.sd = jitter.sd),
@@ -302,7 +302,7 @@ fit_model <- function(type, matrix_type, rr,
         }
         # Record all the negative log likelihoods.
         negativeLogLik_group <- c()
-        for (i in 1 :numRefit) {
+        for (i in 1 :numFit) {
           negativeLogLik_group[i] <- fits[[i]]$fit$fit$objective
         }
         # The following is strategy 1 that select a converged model having relatively smaller negative log-likelihood;

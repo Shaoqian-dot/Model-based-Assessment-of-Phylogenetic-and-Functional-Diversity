@@ -63,7 +63,7 @@ beta <- log(2)
 quantile <- 0.35
 Eigen <- 1
 NOS <- 2
-numRefit <- 5
+numFit <- 5
 
 # Other parameters from the previous simulations
 signal <- NA
@@ -100,7 +100,7 @@ res_all <- seed |>
       Absence = TRUE,
       FactorLoading = Lambda,
       TruePara = TruePara,
-      numRefit = numRefit
+      numFit = numFit
     )
   })
 
