@@ -37,6 +37,7 @@ source('../R/randomization.R')
 source(system.file("misc", "extract_rr.R", package = "glmmTMB"))
 source('../R/get_num.eig.R')
 source('../R/fit_model_current2.R')
+source('../R/simulate_random_effects.R')
 ## Function to produce boxplot for model-based diversity
 make_div_boxplot <- function(eta_B_u_hat, ylab) {
   
@@ -217,21 +218,27 @@ VC_phy_func_J <- J %*%
 V_J <- eigen(VC_phy_func_J)$vectors
 D_J <- eigen(VC_phy_func_J)$values
 
-# Get the number of main directions in signalling PD/FD
-num.eig <- get_num.eig(Methods = 'Method3', NA, D = diag(eigen(J %*% VC_phy_func %*% J)$values[1 : (p -1)]))
 
-# # Modelling
-model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
-                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors,
-                     val_num.eig = num.eig, Distribution = 'binomial',
-                     null = FALSE, p = p, site = FALSE, LV_num = 2, 
-                     method = 'res', jitter.sd = 0.2, Refit = FALSE)
-model_SiteEffect <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
-                     yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
-                     val_num.eig = num.eig, Distribution = 'binomial', 
-                     null = FALSE, p = p, site = TRUE, LV_num = 2, 
-                     method = 'res', jitter.sd = 0.2, Refit = FALSE)
-save.image(file = "../results/Real Application/my_environment2.RData")
+e <- new.env()
+load("C:/Users/huang/OneDrive - UNSW/PhD Project/Github/Model based assessment of phylogenetic and functional divesity/results/Real Application/my_environment.RData", envir = e)
+
+model <- e$model_SiteEffect
+# # Get the number of main directions in signalling PD/FD
+# num.eig <- get_num.eig(Methods = 'Method3',
+#                        Methods_para = NA, D = diag(D_J))
+# 
+# # # Modelling
+# # model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
+# #                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors,
+# #                      val_num.eig = num.eig, Distribution = 'binomial',
+# #                      null = FALSE, p = p, site = FALSE, LV_num = 2, 
+# #                      method = 'res', jitter.sd = 0.2, Refit = FALSE)
+# model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE,
+#                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors,
+#                      val_num.eig = num.eig, Distribution = 'binomial',
+#                      null = FALSE, p = p, site = TRUE, LV_num = 2,
+                     #method = 'res', jitter.sd = 0.2, Refit = FALSE)$fit
+#save.image(file = "../results/Real Application/my_environment2.RData")
 
 # Compare the two models: model_rowEffect and model_SiteEffect
 #anova(model_update, model_SiteEffect)
@@ -302,23 +309,26 @@ DHARMa::plotResiduals(
 ### Extract fixed and random effects
 ```{r}
 ## Estimates of fixed effects, eta_T
+nd <- model$frame
+nd$site[] <- NA
 eta_T_hat <- predict(model, 
+                     newdata = nd,
                    type = "link",
-                   re.form = NA)
+                   re.form = NULL)
 
 # Arrange eta_T_hat into a matrix
-eta_T_hat <- matrix(
+eta_T_hat_M <- matrix(
   as.numeric(eta_T_hat),
   ncol = p,
   byrow = FALSE
 )
 
 # Estimates of row centered fixed effects, eta_B 
-eta_B_hat <- eta_T_hat %*% J 
+eta_B_hat <- eta_T_hat_M %*% J 
 
 ##  Estimates of conditional random effects on y
-#RR <- simulate_random_effects(model = model, uncertainty = TRUE)
-RR <- matrix(0, nrow = nrow(eta_T_hat), ncol = p)
+#RR <- simulate_random_effects(model = model)
+#RR <- matrix(0, nrow = nrow(eta_T_hat), ncol = p)
 ```
 
 ### Dose $\hat{\mu}_B^{\top}D\hat{\mu}_B$ can measure diversity correctly? 
@@ -362,7 +372,7 @@ fig1
 
 ## Produce boxplot for model-based diversity in each com 
 # Mean abundance scale
-mu_eta_B_u_hat <- expit(eta_B_hat + RR)
+mu_eta_B_u_hat <- expit(eta_B_hat)
 
 p_mu <- make_div_boxplot(
   mu_eta_B_u_hat,
@@ -370,7 +380,7 @@ p_mu <- make_div_boxplot(
 )
 p_mu
 # Logit scale
-eta_B_u_hat <- eta_B_hat + RR # Question here : should I use RR %*% J or RR?
+eta_B_u_hat <- eta_B_hat # Question here : should I use RR %*% J or RR?
 
 p_eta <- make_div_boxplot(
   eta_B_u_hat,
@@ -386,7 +396,7 @@ In terms of $\boldsymbol{\boldsymbol{\eta}_B}^{\top}\boldsymbol{D}\boldsymbol{\e
 ### Biplot
 ```{r}
 ## Produce a biplot based on estimate of \eta_T + u (Estimate \eta_T and u)
-eta_T_u_hat  <-  eta_T_hat + RR
+eta_T_u_hat  <-  eta_T_hat_M
 colnames(eta_T_u_hat) <- selected_species
 eta_T_u_hat <- eta_T_u_hat[, colnames(DM_phy_func)]
 eta_T_u_hat_data <- cbind('com' = my.sample.filtered$Community, eta_T_u_hat)

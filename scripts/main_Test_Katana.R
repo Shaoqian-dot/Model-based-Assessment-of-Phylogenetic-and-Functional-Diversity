@@ -88,7 +88,7 @@ family <- c("binomial")
 
 p <- c(80)
 
-r <- c(8, 16)
+r <- c(32)
 
 Eigen <- c(1)
 
@@ -112,7 +112,7 @@ beta <- log(4)
 quantile <- 0.35
 axis_method <- "Method3"
 Absence <- TRUE
-numRefit  <- 5 
+numRefit  <- 2 
 
 ############################################################
 ## Set random seed
@@ -180,6 +180,7 @@ run_name <- paste0(
   "_axis_method_", axis_method,
   "_Eigen_", Eigen,
   "_Absence_", Absence,
+  "_numRefit", numRefit,
   "_p_", paste0(p, collapse = ""),
   "_r_", paste0(r, collapse = ""),
   "_muRef_MS_res_S3_sim1000"

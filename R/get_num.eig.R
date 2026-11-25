@@ -1,7 +1,8 @@
 # Function to determine the number of eigenvalues to retain based on different methods
 # Methods: a vector of method names ('Method1', 'Method2', ..., 'Method5')
 # Methods_para: a vector of parameters corresponding to each method
-# D: a square matrix (assumed to be diagonal with eigenvalues on the diagonal)
+# D: a square matrix (assumed to be diagonal with eigenvalues on the diagonal), 
+# Dimension of D should be equal to p, and please note that Method3 use eigenvalues of JSJ instead of S. 
 get_num.eig <- function (Methods, Methods_para, D){
   
   # Initialize a vector to store the number of eigenvalues for each method
