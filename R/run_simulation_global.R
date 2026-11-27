@@ -20,9 +20,13 @@ run_simulation <- function(
     Corr,
     Eigen,
     axis_method,
+    Methods_para,
     Absence,
     TruePara,
     FactorLoading,
+    method,
+    jitter.sd, 
+    Refit,
     numFit
 ){
   
@@ -201,7 +205,6 @@ run_simulation <- function(
             
           }
         }
-
         model_res <- fit_models(
           dat = dat_long,
           family = family_type,
@@ -211,6 +214,10 @@ run_simulation <- function(
           q = q,
           test = test,
           axis_method = axis_method,
+          Methods_para = Methods_para,
+          method = method,
+          jitter.sd = jitter.sd, 
+          Refit = Refit,
           numFit = numFit
         )
 

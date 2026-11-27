@@ -50,7 +50,8 @@ load(file.path('data', "Para_PCV.RData"))
 ###########################################################
 ## Main simulation runner
 ###########################################################
-axis_method <- 'Method3'
+axis_method <- c('Method2','Method2','Method3')
+Methods_para <- c(0.6, 0.8, NA)
 families <- c("binomial")
 globalTest <- FALSE
 test <- c("Wald") # Or LRT
@@ -63,7 +64,10 @@ beta <- log(2)
 quantile <- 0.35
 Eigen <- 1
 NOS <- 2
-numFit <- 5
+method = NULL
+jitter.sd = 0 
+Refit = FALSE
+numFit = 1 #at least fit once
 
 # Other parameters from the previous simulations
 signal <- NA
@@ -97,9 +101,13 @@ res_all <- seed |>
       quantile = quantile,
       Eigen = Eigen,
       axis_method = axis_method ,
+      Methods_para = Methods_para,
       Absence = TRUE,
       FactorLoading = Lambda,
       TruePara = TruePara,
+      method = method,
+      jitter.sd = jitter.sd, 
+      Refit = Refit,
       numFit = numFit
     )
   })

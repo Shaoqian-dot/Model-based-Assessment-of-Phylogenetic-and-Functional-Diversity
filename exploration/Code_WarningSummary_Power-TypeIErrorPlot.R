@@ -15,9 +15,10 @@ source('R/model_ratio_table.R')
 # )
 
 folders <- c(
-  "output/Phy_binomial_Wald_Method3_Eigen_1_Absence_TRUE_p_80_r_8163264_muRef_MS_default_S3_sim1000",
-  "output/Phy_bino_Wald_Met3_Eig_1_Abse_TRUE_p_40_r_8163264_muRef_MS_default_S3_sim1000",
-  "output/Phy_binomial_Both_Method3_Eigen_1_Absence_TRUE_p_1020_r_8163264_muRef_MS_default_S3_sim1000"
+  #"output/Phy_binomial_Wald_Method3_Eigen_1_Absence_TRUE_p_80_r_8163264_muRef_MS_default_S3_sim1000",
+  "output/Phy_bino_Wald_Met3_Eig_1_Abse_TRUE_p_40_r_8163264_muRef_MS_default_S3_sim1000"
+  #"output/Phy_fam_bino_testBoth_Method3_Eigen_1_AbsenceTRUE_p_80_r_816_muRef_MS_res_S3_sim1000",
+  #"output/Phy_fam_bino_Both_Method3_Eigen_1_Absence_TRUE_numFit3_p_80_r_32_muRef_MS_res_S3_sim1000"
 )
 
 files <- unlist(lapply(
@@ -40,7 +41,8 @@ res_all <- purrr::map_dfr(files, function(f) {
 
 # Power and Type I error
 res_summary <- res_all %>%
-  dplyr::filter(test != "LRT" | is.na(test)) %>%
+  dplyr::filter((test != "LRT" | is.na(test)) 
+                & !(res_all$seed %in% unique(res_all$seed[is.na(res_all$pvalue)]))) %>%
   group_by(
     family,
     p,
@@ -61,12 +63,12 @@ PanelPlot (x_var = "r",
            q_fixed = 5,
            eigen_target = 1,
            axis_method_label = "Method3",
-           levels_p <- c(10, 20, 40, 80),
+           levels_p <- c(40),
            levels_r <- c(8, 16, 32, 64),
            res_summary = res_summary)
 
 # Warning Summary
 res = res_all
-table_10_8 <- model_ratio_table(p = 40, r = 64, res = res)
+table_10_8 <- model_ratio_table(p = 80, r = 64, res = res)
 print(table_10_8, digits = 3, row.names = FALSE)
 attr(table_10_8, "n_datasets")  # 672

@@ -177,7 +177,7 @@ res <- run_simulation(
 run_name <- paste0(
   "Phy_fam_", family,
   "_test_", test,
-  "_axis_method_", axis_method,
+  "_axis_method_", paste0(axis_method, collapse = ""),
   "_Eigen_", Eigen,
   "_Absence_", Absence,
   "_numFit", numFit,

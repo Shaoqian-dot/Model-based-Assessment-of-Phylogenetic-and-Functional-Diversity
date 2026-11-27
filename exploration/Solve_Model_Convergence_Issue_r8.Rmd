@@ -42,16 +42,16 @@ refit <- function(seed) {
 # 1 Parameters
 ```{r}
 #seedID <- params$seed
-seedID <- 3
-set.seed(seedID)
-p <- 10
-NOPS <- 2# Number of pairs of swaps 
+#seedID <- 3
+#set.seed(seedID)
+p <- 40
+NOPS <- 8 # Number of pairs of swaps 
 r <- 8
 q <- 5
 alpha <- log(9 / 4)
 beta <- log(4)
 quantile <- 0.35
-Eigen <- 3 # Build correlation by extracting factor loading from the real data set
+Eigen <- 1 # Build correlation by extracting factor loading from the real data set
 fam_type <- 'binomial'
 Absence <- 'TRUE'
 FactorLoading <- Lambda
@@ -70,6 +70,11 @@ S_J <- J %*% S %*% J
 val_num.eig <- get_num.eig(Methods = 'Method3', 
                            Methods_para = NA,
                            D = diag(eigen(S_J)$values)[-p, -p])
+print(val_num.eig)
+val_num.eig_correct <- get_num.eig(Methods = 'Method3', 
+                           Methods_para = NA,
+                           D = diag(eigen(S_J)$values))
+print(val_num.eig_correct)
 ```
 
 # 2 Data Generation
@@ -125,9 +130,22 @@ Model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, LV_num = 2,
                       yX = data$yX, P_J = eigen(S_J)$vectors, 
                       val_num.eig = val_num.eig, Distribution = fam_type, 
                       null = FALSE, p = p, site = FALSE,
-                      Refit = FALSE, numRefit = 5, method = 'res', jitter.sd = 0.1)
-sum_refits <- summarise_fits(fits)
+                      Refit = FALSE, method = 'res', jitter.sd = 0.1)
+#sum_refits <- summarise_fits(fits)
 
+prediction <- predict(Model$fit,
+                      re.form = NULL)
+
+prediction_M <- matrix(prediction,
+                       ncol = p,
+                       byrow = FALSE)
+prediction_M <- cbind(
+  com = rep(1:5, each = 8),
+  prediction_M
+)
+RE <- ranef(Model$fit)
+RE_rr <- RE$cond$id
+Cov_para <- vcov(Model$fit)$cond
 ```
 
 

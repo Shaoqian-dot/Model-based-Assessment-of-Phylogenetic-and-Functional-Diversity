@@ -8,7 +8,8 @@ save_checkpoint <- function(results,
   
   save_path <- file.path(
     path,
-    paste0("Eigen", Eigen, "_", family, "_", "axis_method", axis_method)
+    paste0("Eigen", Eigen, "_", family, "_", "axis_method", 
+           paste0(axis_method, collapse = ""))
   )
   
   if (!dir.exists(save_path)) {

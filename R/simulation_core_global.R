@@ -7,8 +7,12 @@ fit_models <- function(dat,
                        S_J,
                        p,
                        q,
-                       axis_method = c('Method1', 'Method3', 'Both'),
-                       numFit = numFit){
+                       axis_method,
+                       Methods_para,
+                       method,
+                       jitter.sd, 
+                       Refit,
+                       numFit){
   # Likelihood Ratio Test
   get_lrt_row <- function(j, fit_glmm_no_rr, fit_glmm_rr, val_num.eig){
     
@@ -29,6 +33,9 @@ fit_models <- function(dat,
         null = TRUE,
         com_left = com_left,
         p = p, 
+        method = method,
+        jitter.sd = jitter.sd, 
+        Refit = Refit,
         numFit = numFit
       ),
       silent = TRUE
@@ -46,6 +53,9 @@ fit_models <- function(dat,
         null = TRUE,
         com_left = com_left,
         p = p,
+        method = method,
+        jitter.sd = jitter.sd, 
+        Refit = Refit,
         numFit = numFit
       ),
       silent = TRUE
@@ -231,17 +241,17 @@ fit_models <- function(dat,
   } else if (globalTest == FALSE) {
     
     axis_method_tbl <- data.frame(
-      axis_method = c("Method1", "Method3"),
-      Methods_para = c(2, NA)
+      axis_method = axis_method,
+      Methods_para = Methods_para
     )
     
-    if (axis_method != "Both") {
-      axis_method_tbl <- axis_method_tbl[
-        axis_method_tbl$axis_method == axis_method,
-        ,
-        drop = FALSE
-      ]
-    }
+    # if (axis_method != "Both") {
+    #   axis_method_tbl <- axis_method_tbl[
+    #     axis_method_tbl$axis_method == axis_method,
+    #     ,
+    #     drop = FALSE
+    #   ]
+    # }
     
     eig <- eigen(S_J)
     V_J <- eig$vectors # eigenvectors of the new similarity matrix
@@ -252,7 +262,7 @@ fit_models <- function(dat,
       val_num.eig <<- get_num.eig(
         Methods = axis_method,
         Methods_para = Methods_para,
-        D = D_J[-p, -p] # Remove eigenvalue 0
+        D = D_J # Retain all the eigenvalues.
       )
       
       fit_glmm_no_rr <- try(
@@ -266,6 +276,9 @@ fit_models <- function(dat,
           Distribution = fam,
           null = FALSE,
           p = p,
+          method = method,
+          jitter.sd = jitter.sd, 
+          Refit = Refit,
           numFit = numFit
         ),
         silent = TRUE
@@ -282,8 +295,10 @@ fit_models <- function(dat,
           Distribution = fam,
           null = FALSE,
           p = p,
-          numFit = numFit
-        ),
+          method = method,
+          jitter.sd = jitter.sd, 
+          Refit = Refit,
+          numFit = numFit),
         silent = TRUE
       )
       
@@ -315,6 +330,7 @@ fit_models <- function(dat,
         lapply(names(res_list), function(x) {
           cbind(
             axis_method = axis_method,
+            Methods_para = Methods_para,
             test = x,
             res_list[[x]]
           )

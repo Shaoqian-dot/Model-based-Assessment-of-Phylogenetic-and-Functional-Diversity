@@ -223,7 +223,7 @@ e <- new.env()
 load("C:/Users/huang/OneDrive - UNSW/PhD Project/Github/Model based assessment of phylogenetic and functional divesity/results/Real Application/my_environment.RData", envir = e)
 
 model <- e$model_SiteEffect
-# # Get the number of main directions in signalling PD/FD
+# Get the number of main directions in signalling PD/FD
 # num.eig <- get_num.eig(Methods = 'Method3',
 #                        Methods_para = NA, D = diag(D_J))
 # 
@@ -237,8 +237,8 @@ model <- e$model_SiteEffect
 #                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors,
 #                      val_num.eig = num.eig, Distribution = 'binomial',
 #                      null = FALSE, p = p, site = TRUE, LV_num = 2,
-                     #method = 'res', jitter.sd = 0.2, Refit = FALSE)$fit
-#save.image(file = "../results/Real Application/my_environment2.RData")
+#                      method = 'res', jitter.sd = 0.2, Refit = FALSE)$fit
+
 
 # Compare the two models: model_rowEffect and model_SiteEffect
 #anova(model_update, model_SiteEffect)
@@ -327,7 +327,8 @@ eta_T_hat_M <- matrix(
 eta_B_hat <- eta_T_hat_M %*% J 
 
 ##  Estimates of conditional random effects on y
-#RR <- simulate_random_effects(model = model)
+RR <- simulate_random_effects(model = model)
+save.image(file = "../results/Real Application/my_environmentRR.RData")
 #RR <- matrix(0, nrow = nrow(eta_T_hat), ncol = p)
 ```
 
