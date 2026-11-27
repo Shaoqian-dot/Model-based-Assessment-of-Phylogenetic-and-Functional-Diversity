@@ -86,9 +86,9 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(80)
+p <- c(40)
 
-r <- c(32)
+r <- c(8, 16, 32, 64)
 
 Eigen <- c(1)
 
@@ -103,16 +103,20 @@ q <- 5
 
 globalTest <- FALSE
 
-test <- "Both"
+test <- "Wald"
 
 Swap <- TRUE
 
 alpha <- log(9 / 4)
 beta <- log(4)
 quantile <- 0.35
-axis_method <- "Method3"
+axis_method <- c('Method2', 'Method2', 'Method3')
+Methods_para <- c(0.6, 0.8, NA)
 Absence <- TRUE
-numFit  <- 3
+method = NULL
+jitter.sd = 0
+Refit = FALSE
+numFit  = 1
 
 ############################################################
 ## Set random seed
@@ -164,10 +168,14 @@ res <- run_simulation(
   quantile = quantile,
   Eigen = Eigen,
   axis_method  = axis_method,
+  Methods_para = Methods_para,
   Absence = Absence,
   FactorLoading = Lambda,
   TruePara = TruePara,
-  numFit = numFit
+  numFit = numFit,
+  method = method,
+  jitter.sd = jitter.sd,
+  Refit = Refit
 )
 
 ############################################################
@@ -178,12 +186,15 @@ run_name <- paste0(
   "Phy_fam_", family,
   "_test_", test,
   "_axis_method_", paste0(axis_method, collapse = ""),
+  "_MethodsPara_", paste0(Methods_para, collapse = ""),
   "_Eigen_", Eigen,
-  "_Absence_", Absence,
+  "_Refit_", Refit,
   "_numFit", numFit,
   "_p_", paste0(p, collapse = ""),
   "_r_", paste0(r, collapse = ""),
-  "_muRef_MS_res_S3_sim1000"
+  if (is.null(method)) "_NULL" else paste0('_', as.character(method)),
+  "_jitter.sd_", jitter.sd,
+  "_muRef_MS_S3_sim1000"
 ) #mu... indicates how we set abundance of ref-species.
 #muRef: use ref-speices's own abundance;
 #muMeanOverall: use average mu across the 115 species;
