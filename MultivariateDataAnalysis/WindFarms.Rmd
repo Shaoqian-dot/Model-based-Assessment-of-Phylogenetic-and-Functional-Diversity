@@ -1,0 +1,700 @@
+---
+title: "Learning Roadmap: Multivariate Community Data Analysis Using the windFarms Dataset"
+author: "Self-Study Guide"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+# Introduction
+
+## Goal
+
+The primary goal of this project is to develop a solid understanding of modern methods for analyzing **multivariate ecological community data**, using the `windFarms` dataset from the **ecostats** package as a case study.
+
+By the end of this learning pathway, I should be able to:
+
+1. Understand community data structure.
+2. Explore species abundance matrices.
+3. Visualize multivariate patterns.
+4. Perform model-based community analysis.
+5. Apply BACI (Before-After-Control-Impact) designs.
+6. Identify species driving community changes.
+7. Evaluate model assumptions and diagnostics.
+8. Understand latent-variable approaches such as GLLVM.
+
+---
+
+# Stage 1: Understand the Study Design
+
+## Learning Objectives
+
+Before conducting any analysis, understand:
+
+- What was sampled?
+  16 fish counts.
+- When was it sampled?
+  2003 and 2010.
+- Why was it sampled?
+  To investigate does fish community changes between treatment and controlled areas?
+- What are the experimental factors?
+  Yeas, windfarm or not.
+---
+
+## Key Ecological Question
+
+Did offshore wind farm construction alter fish community composition?
+
+What is the ecological question in David's book?
+---
+
+## Variables to Understand
+
+Potential factors include:
+
+- Year
+- Before vs After
+- Control vs Impact
+- Station
+- Zone
+
+Response variables:
+
+- Fish species abundances
+- Total abundance
+
+---
+
+## Exercise
+
+Create a conceptual diagram of the experimental design.
+
+Questions:
+
+1. What is the treatment?
+2. What is the control?
+3. What is the temporal factor?
+4. What is the response?
+
+---
+
+## Milestone
+
+At this stage I should understand:
+
+> Why this is a BACI design rather than a simple before-after comparison.
+Because a BACI design answers the question that did wind farm construnction alter changes of fish cummunity instead of the question that if fish communities are different between windfarm and controlled areas.
+---
+
+# Stage 2: Explore the Community Matrix
+
+## Learning Objectives
+
+Understand the structure of multivariate abundance data.
+
+A community data matrix typically has:
+
+- Rows = sampling units
+- Columns = species
+
+---
+
+## Build the Species Matrix
+
+```r
+library(ecostats)
+
+data(windFarms)
+
+Y <- windFarms$abund
+
+dim(Y)
+head(Y)
+```
+
+---
+
+## Species Richness
+
+```r
+species_richness <- rowSums(Y > 0)
+
+summary(species_richness)
+hist(species_richness)
+```
+
+---
+
+## Total Abundance
+
+```r
+total_abundance <- rowSums(Y)
+
+summary(total_abundance)
+boxplot(total_abundance)
+```
+
+---
+
+## Zero Inflation
+
+```r
+mean(Y == 0)
+```
+
+Questions:
+
+- How sparse is the matrix?
+- Are zeros common?
+- Which species are rare?
+
+---
+
+## Variance-Mean Relationship
+
+```r
+species_mean <- colMeans(Y)
+species_var <- apply(Y, 2, var)
+
+plot(species_mean, species_var)
+abline(0,1,col="red")
+```
+
+---
+
+## Milestone
+
+Be able to explain:
+
+- Community matrix
+- Sparsity
+- Overdispersion
+- Zero inflation
+
+---
+
+# Stage 3: Ordination Methods
+
+## Learning Objectives
+
+Ordination provides low-dimensional representations of community structure.
+
+---
+
+# 3.1 Principal Component Analysis (PCA)
+
+## Why PCA?
+
+PCA identifies directions of greatest variation.
+
+---
+
+## Analysis
+
+```r
+Ylog <- log(Y + 1)
+
+pca <- prcomp(Ylog, scale = TRUE)
+
+summary(pca)
+biplot(pca)
+```
+
+---
+
+## Questions
+
+1. Which species dominate PC1?
+2. Which species dominate PC2?
+3. Do Before and After samples separate?
+
+---
+
+## Limitations
+
+PCA assumes:
+
+- Euclidean distance
+- Continuous data
+
+These assumptions are often problematic for ecological count data.
+
+---
+
+# 3.2 Non-metric Multidimensional Scaling (NMDS)
+
+## Why NMDS?
+
+NMDS better handles:
+
+- Abundance data
+- Non-Euclidean relationships
+- Ecological distance measures
+
+---
+
+## Analysis
+
+```r
+library(vegan)
+
+nmds <- metaMDS(Y)
+
+plot(nmds)
+```
+
+---
+
+## Key Concepts
+
+Learn:
+
+- Bray-Curtis distance
+- Stress value
+- Rank-based ordination
+
+---
+
+## Questions
+
+How similar are PCA and NMDS conclusions?
+
+---
+
+# 3.3 Constrained Ordination
+
+## Goal
+
+Understand relationships between communities and explanatory variables.
+
+Methods:
+
+- dbRDA
+- CAP
+- CCA (later)
+
+---
+
+## Milestone
+
+Be able to explain:
+
+> Difference between unconstrained and constrained ordination.
+
+---
+
+# Stage 4: Multivariate Generalized Linear Models
+
+## Learning Objectives
+
+Move beyond visualization and perform formal hypothesis testing.
+
+---
+
+## Why Not Run 16 Separate GLMs?
+
+Problems:
+
+- Multiple testing
+- Loss of community-level inference
+- Increased false positives
+
+---
+
+## manyglm
+
+```r
+library(mvabund)
+
+fit <- manyglm(
+  Y ~ Impact,
+  family = "negative.binomial"
+)
+```
+
+---
+
+## Concepts to Learn
+
+- Multivariate responses
+- Generalized linear models
+- Negative binomial distribution
+
+---
+
+## Hypothesis Testing
+
+```r
+anova(fit)
+```
+
+---
+
+## Interpretation
+
+Null hypothesis:
+
+> The fish community does not differ among Impact groups.
+
+---
+
+## Milestone
+
+Be able to explain:
+
+> Why manyglm is preferable to performing one model per species.
+
+---
+
+# Stage 5: BACI Analysis
+
+## Learning Objectives
+
+Understand environmental impact assessment.
+
+---
+
+## BACI Framework
+
+BACI stands for:
+
+- Before
+- After
+- Control
+- Impact
+
+---
+
+## Core Model
+
+```r
+fit_baci <- manyglm(
+  Y ~ Time * Zone,
+  family = "negative.binomial"
+)
+```
+
+---
+
+## Interpretation
+
+### Main Effect: Time
+
+Did communities change over time?
+
+### Main Effect: Zone
+
+Are locations different?
+
+### Interaction: Time × Zone
+
+Did impact sites change differently from control sites?
+
+---
+
+## Critical Question
+
+The interaction term is the key BACI effect.
+
+---
+
+## Exercise
+
+Interpret each model coefficient using ecological language.
+
+---
+
+## Milestone
+
+Be able to explain:
+
+> Why a significant interaction is stronger evidence of impact than a simple before-after difference.
+
+---
+
+# Stage 6: Species-Level Contributions
+
+## Learning Objectives
+
+Determine which species drive community change.
+
+---
+
+## Species-specific Tests
+
+```r
+anova(
+  fit_baci,
+  p.uni = "adjusted"
+)
+```
+
+---
+
+## Questions
+
+1. Which species are significant?
+2. Do results survive multiple-testing correction?
+3. Which species increase?
+4. Which species decrease?
+
+---
+
+## Effect Sizes
+
+Avoid relying solely on p-values.
+
+Calculate:
+
+- Predicted abundances
+- Fold changes
+- Confidence intervals
+
+---
+
+## Milestone
+
+Be able to identify ecological "winner" and "loser" species.
+
+---
+
+# Stage 7: Model Diagnostics
+
+## Learning Objectives
+
+Evaluate whether model assumptions are reasonable.
+
+---
+
+## Dunn-Smyth Residuals
+
+Learn:
+
+- Why residual diagnostics matter
+- Why normality is not expected
+
+---
+
+## Diagnostic Plots
+
+```r
+plot(fit_baci)
+```
+
+---
+
+## Assess
+
+- Residual trends
+- Outliers
+- Overdispersion
+- Goodness-of-fit
+
+---
+
+## Questions
+
+Why is Negative Binomial often preferable to Poisson models?
+
+---
+
+## Milestone
+
+Be able to justify model choice using diagnostic evidence.
+
+---
+
+# Stage 8: Latent Variable Models (GLLVM)
+
+## Learning Objectives
+
+Understand model-based ordination.
+
+---
+
+## Why GLLVM?
+
+Combines:
+
+- GLMs
+- Ordination
+- Hidden ecological gradients
+
+---
+
+## Conceptual Model
+
+Observed abundance depends on:
+
+- Measured variables
+- Latent ecological drivers
+
+---
+
+## Topics to Learn
+
+- Latent variables
+- Species associations
+- Model-based ordination
+
+---
+
+## Recommended Reading
+
+Explore the `gllvm` package documentation and vignettes.
+
+---
+
+## Milestone
+
+Be able to explain:
+
+> How GLLVM extends traditional ordination methods.
+
+---
+
+# Stage 9: Final Integrative Project
+
+## Objective
+
+Produce a complete ecological analysis.
+
+---
+
+## Section 1: Data Exploration
+
+Include:
+
+- Richness
+- Abundance
+- Sparsity
+- Species distributions
+
+---
+
+## Section 2: Ordination
+
+Include:
+
+- PCA
+- NMDS
+
+Interpret biological patterns.
+
+---
+
+## Section 3: Community-Level Inference
+
+Fit:
+
+```r
+manyglm(...)
+```
+
+Evaluate:
+
+- Global community response
+- BACI effect
+
+---
+
+## Section 4: Species Responses
+
+Identify:
+
+- Significant species
+- Effect sizes
+
+---
+
+## Section 5: Diagnostics
+
+Evaluate model assumptions.
+
+---
+
+## Section 6: Ecological Interpretation
+
+Answer:
+
+1. Did the fish community change?
+2. Was change associated with the wind farm?
+3. Which species responded most strongly?
+4. Is the evidence convincing?
+
+---
+
+# Four-Week Study Schedule
+
+## Week 1
+
+Topics:
+
+- Community matrices
+- Richness and abundance
+- PCA
+- NMDS
+
+Deliverable:
+
+- Exploratory data analysis report
+
+---
+
+## Week 2
+
+Topics:
+
+- GLMs
+- Negative Binomial models
+- manyglm
+
+Deliverable:
+
+- Community-level hypothesis testing
+
+---
+
+## Week 3
+
+Topics:
+
+- BACI design
+- Interaction effects
+- Ecological impact assessment
+
+Deliverable:
+
+- Complete BACI analysis
+
+---
+
+## Week 4
+
+Topics:
+
+- Species-level inference
+- Diagnostics
+- GLLVM
+
+Deliverable:
+
+- Final reproducible report
+
+---
+
+# Success Criteria
+
+By the end of this roadmap I should be able to:
+
+- Build a community matrix.
+- Perform ordination analyses.
+- Fit multivariate GLMs.
+- Interpret BACI interactions.
+- Identify influential species.
+- Evaluate model diagnostics.
+- Explain ecological impacts using rigorous statistical evidence.
+- Understand the foundations of modern model-based community ecology.

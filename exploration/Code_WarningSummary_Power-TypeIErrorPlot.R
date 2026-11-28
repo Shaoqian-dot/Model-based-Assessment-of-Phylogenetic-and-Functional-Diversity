@@ -16,7 +16,7 @@ source('R/model_ratio_table.R')
 
 folders <- c(
   #"output/Phy_binomial_Wald_Method3_Eigen_1_Absence_TRUE_p_80_r_8163264_muRef_MS_default_S3_sim1000",
-  "output/Phy_bino_Wald_Met3_Eig_1_Abse_TRUE_p_40_r_8163264_muRef_MS_default_S3_sim1000"
+  "output/Phy_fam_bino_Wald_Method223_MethodsPara_0.60.8NA_Eigen1_p_40_r_8163264_NULL_muRef_MS_S3_sim1000"
   #"output/Phy_fam_bino_testBoth_Method3_Eigen_1_AbsenceTRUE_p_80_r_816_muRef_MS_res_S3_sim1000",
   #"output/Phy_fam_bino_Both_Method3_Eigen_1_Absence_TRUE_numFit3_p_80_r_32_muRef_MS_res_S3_sim1000"
 )
@@ -52,7 +52,8 @@ res_summary <- res_all %>%
     Eigen,
     com,
     method,
-    axis_method) %>%
+    axis_method,
+    Methods_para) %>%
   summarise(
     power = mean (pvalue < 0.05, na.rm = TRUE),
     n_jobs = n(),
@@ -65,6 +66,7 @@ PanelPlot (x_var = "r",
            axis_method_label = "Method3",
            levels_p <- c(40),
            levels_r <- c(8, 16, 32, 64),
+           Methods_para = NA,
            res_summary = res_summary)
 
 # Warning Summary

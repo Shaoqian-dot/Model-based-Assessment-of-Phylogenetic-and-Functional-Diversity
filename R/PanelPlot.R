@@ -4,6 +4,7 @@ PanelPlot <- function (x_var = "r",
                        axis_method_label = "Method3",
                        levels_p = c(5, 10, 20, 40, 80),
                        levels_r = c(4, 8, 16, 32, 64),
+                       Methods_para,
                        res_summary) {
   row_var <- if (x_var == "r") "p" else "r"
   scenario_levels <- c(
@@ -20,12 +21,32 @@ PanelPlot <- function (x_var = "r",
     levels_p
   }
   
+  # plot_data <- res_summary %>%
+  #   filter(
+  #     .data$family == "binomial",
+  #     .data$Eigen == .env$eigen_target,
+  #     ifelse(.env$axis_method_label == 'Method3',
+  #            is.na(.data$axis_method) |
+  #              .data$axis_method == .env$axis_method_label,
+  #            is.na(.data$axis_method) |
+  #              .data$axis_method == .env$axis_method_label
+  #            & near(.data$Methods_para, .env$Methods_para))
+  #     
+  #   )
   plot_data <- res_summary %>%
-    filter(
+    dplyr::filter(
       .data$family == "binomial",
       .data$Eigen == .env$eigen_target,
-      is.na(.data$axis_method) |
-        .data$axis_method == .env$axis_method_label
+      if (.env$axis_method_label == "Method3") {
+        is.na(.data$axis_method) |
+          .data$axis_method == .env$axis_method_label
+      } else {
+        is.na(.data$axis_method) |
+          (
+            .data$axis_method == .env$axis_method_label &
+              dplyr::near(.data$Methods_para, .env$Methods_para)
+          )
+      }
     ) %>%
     mutate(
       test_plot = coalesce(as.character(.data$test), "Baseline"),

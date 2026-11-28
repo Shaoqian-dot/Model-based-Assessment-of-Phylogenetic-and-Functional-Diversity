@@ -86,20 +86,13 @@ seed <- as.numeric(args[1])
 
 family <- c("binomial")
 
-p <- c(40)
+p <- c(10, 20, 80)
 
 r <- c(8, 16, 32, 64)
 
 Eigen <- c(1)
 
 q <- 5
-
-# signal <- NA
-# 
-# c_val <- NA
-# sigma2 <- NA
-
-#Corr <- 1
 
 globalTest <- FALSE
 
@@ -110,8 +103,8 @@ Swap <- TRUE
 alpha <- log(9 / 4)
 beta <- log(4)
 quantile <- 0.35
-axis_method <- c('Method2', 'Method2', 'Method3')
-Methods_para <- c(0.6, 0.8, NA)
+axis_method <- c('Method2')
+Methods_para <- c(0.8)
 Absence <- TRUE
 method = NULL
 jitter.sd = 0
@@ -187,7 +180,7 @@ run_name <- paste0(
   "_test_", test,
   "_axis_method_", paste0(axis_method, collapse = ""),
   "_MethodsPara_", paste0(Methods_para, collapse = ""),
-  "_Eigen_", Eigen,
+  "_Eigen_", paste0(Eigen, collapse = ""),
   "_Refit_", Refit,
   "_numFit", numFit,
   "_p_", paste0(p, collapse = ""),

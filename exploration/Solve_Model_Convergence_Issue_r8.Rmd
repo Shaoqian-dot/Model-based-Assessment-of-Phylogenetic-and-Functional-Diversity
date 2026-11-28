@@ -69,12 +69,13 @@ S_J <- J %*% S %*% J
 # The number of main axes important in signalling diversity changes
 val_num.eig <- get_num.eig(Methods = 'Method3', 
                            Methods_para = NA,
-                           D = diag(eigen(S_J)$values)[-p, -p])
-print(val_num.eig)
-val_num.eig_correct <- get_num.eig(Methods = 'Method3', 
-                           Methods_para = NA,
                            D = diag(eigen(S_J)$values))
-print(val_num.eig_correct)
+# val_num.eig_M20.6 <- get_num.eig(Methods = 'Method2', 
+#                            Methods_para = 0.6,
+#                            D = diag(eigen(S_J)$values))
+# val_num.eig_M20.8 <- get_num.eig(Methods = 'Method2', 
+#                            Methods_para = 0.8,
+#                            D = diag(eigen(S_J)$values))
 ```
 
 # 2 Data Generation

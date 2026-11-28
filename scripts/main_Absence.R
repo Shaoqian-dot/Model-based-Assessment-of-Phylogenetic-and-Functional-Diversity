@@ -62,7 +62,7 @@ r <- c(8)
 alpha <- log(9/4)
 beta <- log(2)
 quantile <- 0.35
-Eigen <- 1
+Eigen <- c(1, 2)
 NOS <- 2
 method = NULL
 jitter.sd = 0 

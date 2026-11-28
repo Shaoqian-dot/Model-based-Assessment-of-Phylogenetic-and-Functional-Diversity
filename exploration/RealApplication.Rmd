@@ -38,8 +38,6 @@ source('../R/Biplot_arrow.R')
 source('../R/RaoQ.R')
 source('../R/rand.RaoQ.fun.R')
 source('../R/randomization.R')
-source('../R/fit_model_current2.R')
-source('../R/get_num.eig.R')
 source(system.file("misc", "extract_rr.R", package = "glmmTMB"))
 ## Function to produce boxplot for model-based diversity
 make_div_boxplot <- function(eta_B_u_hat, ylab) {
@@ -131,7 +129,7 @@ tree$tip.label <- tree_species
 ### Filter community data by removing rare species
 ```{r}
 # Keep species missing in more than rare_threshold of plots.
-zero_threshold <- 0.95
+zero_threshold <- 0.55
 zero_prop <- colMeans(
   my.sample == 0,
   na.rm = TRUE
@@ -190,9 +188,6 @@ yX$y <- yX$y / 100
 
 # ordBeta requires values strictly between 0 and 1.
 yX$y[yX$y >= 1] <- 0.9999
-
-# Transform it into Presence/Absence
-yX$y[yX$y != 0] <- 1
 ```
 
 
@@ -237,14 +232,9 @@ The reason we are interested into $\boldsymbol{V}_J$ is that the column space of
 ```{r}
 e <- new.env()
 load("C:/Users/huang/OneDrive - UNSW/PhD Project/Github/Model based assessment of phylogenetic and functional divesity/results/Real Application/my_environment.RData", envir = e)
- 
- model <- e$model_SiteEffect
-# num.eig <- get_num.eig(Methods = 'Method3', Methods_para = NA, D = D)
-# model <- fit_model(type = 'p_mid', matrix_type = 'P_J', rr = TRUE, 
-#                      yX = yX, P_J = eigen(J %*% VC_phy_func %*% J)$vectors, 
-#                      val_num.eig = num.eig, Distribution = 'binomial', 
-#                      null = FALSE, p = p, site = TRUE, LV_num = 2, 
-#                      method = 'res', jitter.sd = 0.2, Refit = FALSE)
+
+model_old <- e$model_SiteEffect
+
 # model <- glmmTMB(
 #   y ~ (1 | Site) + sp +
 #     Community +
@@ -262,29 +252,29 @@ summary(model)
 ### Extract fixed and random effects
 ```{r}
 ## Estimates of fixed effects, eta_T
-nd <- model$frame
-#nd$id[] <- NA
-nd$site[] <- NA
-eta_T_hat <- predict(model, 
+nd <- model$fit$frame
+nd$id[] <- NA
+#nd$site[] <- NA
+eta_T_hat <- predict(model$fit, 
                      newdata = nd,
                      type = "link",
-                     re.form = NULL)
+                     re.form = NA)
 # eta_T_hat <- predict(model, 
 #                    type = "link",
 #                    re.form = NA)
 
 # Arrange eta_T_hat into a matrix
-eta_T_hat_M <- matrix(
+eta_T_hat <- matrix(
   as.numeric(eta_T_hat),
   ncol = p,
   byrow = FALSE
 )
 
 # Estimates of row centered fixed effects, eta_B 
-eta_B_hat <- eta_T_hat_M %*% J 
+eta_B_hat <- eta_T_hat %*% J 
 
 ##  Estimates of conditional random effects on y
-RR <- simulate_random_effects(model = model)
+#RR <- simulate_random_effects(model = model, uncertainty = TRUE)
 ```
 
 ### Is $\hat{\boldsymbol{\mu}}_B^{\top}\boldsymbol{D}\hat{\boldsymbol{\mu}}_B$ consistent with randomized Rao's Q? 
@@ -367,7 +357,7 @@ fig1
 
 ## Produce boxplot for model-based diversity in each com 
 # Mean abundance scale
-mu_eta_B_u_hat <- expit(eta_B_hat)
+mu_eta_B_u_hat <- expit(eta_B_hat + RR %*% J)
 
 p_mu <- make_div_boxplot(
   mu_eta_B_u_hat,
@@ -408,7 +398,6 @@ detach(yX_plot)
 ```
 
 ```{r}
-# In this session, we produce \mu_B^{T} D \mu_B based on abundance instead of model estimates
 order_community <- c("LF", "MF", "SF", "NE", "SE", "CG", "OP", "OA")
 abundance_PCV <- abundance/100
 abundance_PCV_adj <- abundance_PCV
@@ -478,14 +467,14 @@ fig_mannual
 ### Biplot
 ```{r}
 ## Produce a biplot based on estimate of \eta_T + u (Estimate \eta_T and u)
-eta_T_u_hat  <-  eta_T_hat_M
+eta_T_u_hat  <-  eta_T_hat + RR
 colnames(eta_T_u_hat) <- selected_species
 eta_T_u_hat <- eta_T_u_hat[, colnames(DM_phy_func)]
 eta_T_u_hat_data <- cbind('com' = my.sample.filtered$Community, eta_T_u_hat)
 Biplot(abundance = eta_T_u_hat_data, P = eigen(VC_phy_func_J)$vectors, plot_labs = labs(
   x = expression(v[J1]^T),
   y = expression(v[J2]^T)
-), c = 28)
+), c = 7)
 ```
 
 ## Conclusion
